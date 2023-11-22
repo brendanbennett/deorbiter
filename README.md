@@ -1,1 +1,1 @@
-# mir-orbiter
+# Satellite re-entry simulator and predictor
