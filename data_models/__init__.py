@@ -1,3 +1,3 @@
-from sim import SimData
+from .sim import SimData
 
-all = ["SimData"]
+__all__ = ["SimData"]
