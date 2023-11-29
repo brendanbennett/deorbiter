@@ -33,7 +33,9 @@ class Simulator:
         if self.config.dimension == 2:
             data = SimData(x1=self.x1, x2=self.x2, times=self.times, sim_config=self.config)
         elif self.config.dimension == 3:
-            data = SimData(x1=self.x1, x2=self.x2, times=self.times, sim_config=self.config)
+            data = SimData(x1=self.x1, x2=self.x2, x3=self.x3, times=self.times, sim_config=self.config)
+        else:
+            raise Exception("Sim dimension is not 2 or 3!")
         return data
 
     def save_data(self, path: str) -> None:
