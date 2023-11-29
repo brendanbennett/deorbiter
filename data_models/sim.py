@@ -1,7 +1,17 @@
 from typing import Optional
 
 from pydantic import BaseModel, NonNegativeFloat
+class SimConfig(BaseModel):
+    # By default, our simulation 2 dimensional
+    dimension: int = 2
 
+    time_step: Optional[float] = None
+
+    # TODO make Enums so we only have a few options
+    simulation_technique: Optional[str] = None
+
+    atmosphere_model: Optional[str] = None
+    
 
 class SimData(BaseModel):
     # Data Entries
@@ -11,13 +21,4 @@ class SimData(BaseModel):
     times: list[NonNegativeFloat]
 
     # Metadata
-    # TODO Add more useful information
-
-    # By default, our simulation 2 dimensional
-    dimension: int = 2
-
-    time_step: Optional[float] = None
-
-    simulation_technique: Optional[str] = None
-
-    atmosphere_model: Optional[str] = None
+    sim_config: SimConfig
