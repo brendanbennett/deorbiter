@@ -12,6 +12,7 @@ class SimConfig(BaseModel):
 
     atmosphere_model: Optional[str] = None
     
+    atmosphere_model_kwargs: dict = dict()
 
 class SimData(BaseModel):
     # Data Entries

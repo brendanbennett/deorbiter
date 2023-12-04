@@ -1,9 +1,12 @@
 import numpy as np
 
 from typing import Callable
+from inspect import getmembers, isfunction
+
 from utils.dataio import save_sim_data
 from data_models import SimData, SimConfig
 
+import simulator.atmos as atmos
 
 class Simulator:
     def __init__(self, config: SimConfig) -> None:
@@ -17,6 +20,14 @@ class Simulator:
     def load_config(self, config: SimConfig):
         self.x = list()
         self.config = config
+        
+    def set_atmosphere_model(self, model_string: str, model_kwargs: dict) -> None:
+        models = get_available_atmos_models()
+        if model_string in models:
+            self.atmosphere_model = models[model_string]
+            self.config.atmosphere_model_kwargs = model_kwargs
+        else:
+            raise ValueError(f"Model {model_string} is not defined in atmos.py!")
     
     @property
     def x1(self):
@@ -53,16 +64,35 @@ class Simulator:
         """
         save_sim_data(self.gather_data(), path=path)
         
-    def atmosphere(self, x: list[float]) -> float:
-        if self.config.atmosphere_model == "simple_exp":
-            return np.exp(-np.linalg.norm(x))
+    def atmosphere(self, state: list[float], time: float) -> float:
+        if self.atmosphere_model is None:
+            raise NotImplementedError("Atmosphere model hasn't been set!")
+        return self.atmosphere_model(state, time, **self.config.atmosphere_model_kwargs)
+        
+
+def get_available_atmos_models() -> dict[str: Callable]:
+    """Find available atmosphere models in atmos.py
+
+    Returns:
+        list[str]: List of models
+    """
+    full_list = getmembers(atmos, isfunction)
+    return {i[0]: i[1] for i in full_list}
 
 
 if __name__ == "__main__":
+    # Run me with
+    # mir-orbiter/src$ python -m simulator.simulator 
+    
     sim = Simulator(SimConfig(time_step=1))
     sim.x = np.array([np.linspace(0, 20, 20), np.random.normal(size=20)]).T
     sim.times = np.linspace(0, 100, 20)
 
     sim.save_data("sim_data.json")
     
-    print(sim.atmosphere([1,2]))
+    # Raises unset atmos error
+    # print(sim.atmosphere([1,2]))
+    
+    print(get_available_atmos_models())
+    sim.set_atmosphere_model("simple_atmos", model_kwargs={"earth_radius": 6e6, "surf_density": 1.225})
+    print(sim.atmosphere([10000,7000], 10))

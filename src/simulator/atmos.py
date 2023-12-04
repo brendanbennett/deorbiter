@@ -11,4 +11,4 @@ def simple_atmos(state, time, earth_radius, surf_density):
     """
     dim = len(state)
     
-    return surf_density * np.exp(-(np.norm(state[:dim])/earth_radius))
+    return surf_density * np.exp(-(np.linalg.norm(state[:dim])/earth_radius))
