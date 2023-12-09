@@ -34,7 +34,9 @@ class Simulator:
     ) -> None:
         models = get_available_atmos_models()
         if model_string in models:
-            self.atmosphere_model = models[model_string]
+            model_factory: Callable = models[model_string]
+            self.atmosphere_model, model_kwargs = model_factory(**model_kwargs)
+            self.config.atmosphere_model = model_string
             self.config.atmosphere_model_kwargs = model_kwargs
         else:
             raise ValueError(
@@ -42,9 +44,7 @@ class Simulator:
             )
 
     def atmosphere(self, state: list[float], time: float) -> float:
-        return self.atmosphere_model(
-            state, time, **self.config.atmosphere_model_kwargs
-        )
+        return self.atmosphere_model(state, time)
         
     def run(self):
         self.check_set_up()
