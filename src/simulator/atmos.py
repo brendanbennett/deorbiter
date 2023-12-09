@@ -1,5 +1,6 @@
 import numpy as np
 
+# TODO Replace with factory
 def simple_atmos(state, time, earth_radius, surf_density):
     """_summary_
 
@@ -9,6 +10,7 @@ def simple_atmos(state, time, earth_radius, surf_density):
         earth_radius (float): radius of earth's surface
         surf_density (float): density of earth's surface
     """
-    dim = len(state)
+    assert len(state) % 2 == 0
+    dim = int(len(state)/2)
     
-    return surf_density * np.exp(-(np.linalg.norm(state[:dim])/earth_radius))
+    return surf_density * np.exp((-(np.linalg.norm(state[:dim])/earth_radius) + 1))

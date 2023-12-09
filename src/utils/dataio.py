@@ -1,4 +1,4 @@
-from data_models import SimData
+from src.data_models import SimData
 import json
 
 

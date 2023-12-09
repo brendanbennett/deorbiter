@@ -3,10 +3,10 @@ import numpy as np
 from typing import Callable
 from inspect import getmembers, isfunction
 
-from utils.dataio import save_sim_data
-from data_models import SimData, SimConfig
+from src.utils.dataio import save_sim_data
+from src.data_models import SimData, SimConfig
 
-import simulator.atmos as atmos
+import src.simulator.atmos as atmos
 
 
 class Simulator:
@@ -108,7 +108,7 @@ def get_available_atmos_models() -> dict[str:Callable]:
     """Find available atmosphere models in atmos.py
 
     Returns:
-        list[str]: List of models
+        dict[str, Callable]: Dictionary of model name keys and function values
     """
     full_list = getmembers(atmos, isfunction)
     return {i[0]: i[1] for i in full_list}
@@ -116,7 +116,7 @@ def get_available_atmos_models() -> dict[str:Callable]:
 
 if __name__ == "__main__":
     # Run me with
-    # mir-orbiter/src$ python -m simulator.simulator
+    # mir-orbiter$ python -m src.simulator.simulator
 
     sim = Simulator(SimConfig(time_step=1))
     sim.x = np.array([np.linspace(0, 20, 20), np.random.normal(size=20)]).T
