@@ -1,19 +1,22 @@
 import numpy as np
+from typing import Callable
 from src.utils.constants import EARTH_RADIUS, AIR_DENSITY_SEA_LEVEL
 
 # TODO Make easier to use
-def simple_atmos(earth_radius=EARTH_RADIUS, surf_density=AIR_DENSITY_SEA_LEVEL):
-    # Document the keywords used in the atmosphere model
-    model_kwargs = locals()
-    def density(state, time):
-        """_summary_
+def simple_atmos(earth_radius: float=EARTH_RADIUS, surf_density: float=AIR_DENSITY_SEA_LEVEL) -> Callable:
+    """Generate simple atmospheric model
 
-        Args:
-            state (tuple[float]): state vector (x1, x2, [x3], v1, v2, [v3])
-            time (float): time of state
-            earth_radius (float): radius of earth's surface
-            surf_density (float): density of earth's surface
-        """
+    Args:
+        earth_radius (float, optional): Earth's radius in metres. Defaults to EARTH_RADIUS.
+        surf_density (float, optional): Air density at Earth's surface in kgm^-3. Defaults to AIR_DENSITY_SEA_LEVEL.
+
+    Returns:
+        density (Callable): Density function taking state and time as input
+        model_kwargs (dict): Model parameters
+    """
+    # Document the keywords used in the atmosphere model
+    model_kwargs: dict = locals()
+    def density(state, time):
         assert len(state) % 2 == 0
         dim = int(len(state)/2)
         
