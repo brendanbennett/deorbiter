@@ -27,8 +27,16 @@ def test_simple_atmos_defaults():
     assert density == AIR_DENSITY_SEA_LEVEL
     assert set(returned_model_kwargs.values()) == set([EARTH_RADIUS, AIR_DENSITY_SEA_LEVEL])
     
-def test_atmos_model_set():
+def test_set_atmos_model():
     models = get_available_atmos_models()
     sim = Simulator(SimConfig(atmosphere_model=next(iter(models))))
     sim.check_set_up()
+    
+def test_set_simle_atmos_defaults():
+    sim = Simulator(SimConfig(atmosphere_model="simple_atmos"))
+    state = (EARTH_RADIUS, 0, -3, 20)
+    time = 0.1
+    density = sim.atmosphere(state=state, time=time)
+    assert density == AIR_DENSITY_SEA_LEVEL
+    assert set(sim.config.atmosphere_model_kwargs.values()) == set([EARTH_RADIUS, AIR_DENSITY_SEA_LEVEL])
     

@@ -30,7 +30,7 @@ class Simulator:
             )
 
     def set_atmosphere_model(
-        self, model_string: str, model_kwargs: dict
+        self, model_string: str = None, model_kwargs: dict = dict()
     ) -> None:
         models = get_available_atmos_models()
         if model_string in models:
@@ -128,8 +128,5 @@ if __name__ == "__main__":
     # print(sim.atmosphere([1,2]))
 
     print(get_available_atmos_models())
-    sim.set_atmosphere_model(
-        "simple_atmos",
-        model_kwargs={"earth_radius": 6e6, "surf_density": 1.225},
-    )
-    print(sim.atmosphere([10000, 7000], 10))
+    sim.set_atmosphere_model("simple_atmos")
+    print(sim.atmosphere([7e6, 7e6], 10))
