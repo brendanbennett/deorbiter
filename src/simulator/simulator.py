@@ -21,7 +21,7 @@ class Simulator:
     def load_config(self, config: SimConfig):
         self.x = list()
         self.config = config
-        
+
         # Initialise atmosphere model if supplied
         if self.config.atmosphere_model is not None:
             self.set_atmosphere_model(
@@ -45,16 +45,16 @@ class Simulator:
 
     def atmosphere(self, state: list[float], time: float) -> float:
         return self.atmosphere_model(state, time)
-        
+
     def run(self):
         self.check_set_up()
-        
+
     def check_set_up(self) -> None:
         """Check all required modules are initialised"""
         errors = []
         if self.atmosphere_model is None:
             errors.append("Atmosphere model hasn't been set!")
-            
+
         if errors:
             raise NotImplementedError(" ".join(errors))
 
