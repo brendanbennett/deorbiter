@@ -1,6 +1,9 @@
-import numpy as np
 from typing import Callable
-from src.utils.constants import EARTH_RADIUS, AIR_DENSITY_SEA_LEVEL
+
+import numpy as np
+from ambiance import Atmosphere as IcaoAtmosphere
+
+from src.utils.constants import AIR_DENSITY_SEA_LEVEL, EARTH_RADIUS
 
 
 # TODO Make easier to use
@@ -34,4 +37,17 @@ def simple_atmos(
         )
 
     # Returning a tuple of (density function, model keyword argments) is required too.
+    return density, model_kwargs
+
+def icao_standard_atmos(earth_radius: float = EARTH_RADIUS):
+    model_kwargs: dict = locals()
+    def density(state: tuple[float], time: float):
+        assert len(state) % 2 == 0
+        dim = int(len(state) / 2)
+        position = state[:dim]
+        
+        height = np.linalg.norm(position) - earth_radius
+        print(f"Calculating for height above sea level {height}")
+        return IcaoAtmosphere(height).density
+    
     return density, model_kwargs
