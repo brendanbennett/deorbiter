@@ -1,5 +1,6 @@
-from src.data_models import SimData
 import json
+
+from src.data_models import SimData
 
 
 def save_sim_data(data: SimData, path: str) -> None:

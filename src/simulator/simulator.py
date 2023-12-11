@@ -1,12 +1,12 @@
+from inspect import getmembers, isfunction
+from typing import Callable
+
 import numpy as np
 
-from typing import Callable
-from inspect import getmembers, isfunction
-
-from src.utils.dataio import save_sim_data
-from src.data_models import SimData, SimConfig
-
 import src.simulator.atmos as atmos
+from src.data_models import SimConfig, SimData
+from src.utils.constants import EARTH_RADIUS
+from src.utils.dataio import save_sim_data
 
 
 class Simulator:
@@ -122,11 +122,11 @@ if __name__ == "__main__":
     sim.x = np.array([np.linspace(0, 20, 20), np.random.normal(size=20)]).T
     sim.times = np.linspace(0, 100, 20)
 
-    sim.save_data("sim_data.json")
-
     # Raises unset atmos error
     # print(sim.atmosphere([1,2]))
 
     print(get_available_atmos_models())
-    sim.set_atmosphere_model("simple_atmos")
-    print(sim.atmosphere([7e6, 7e6], 10))
+    sim.set_atmosphere_model("icao_standard_atmos")
+    print(sim.atmosphere([EARTH_RADIUS + 10000, 10000, 0, 0], 10))
+
+    sim.save_data("sim_data.json")
