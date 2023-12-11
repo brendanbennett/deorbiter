@@ -13,7 +13,7 @@ class Simulator:
     def __init__(self, config: SimConfig) -> None:
         self.x: list[tuple] = None
         self.times: list[float] = list()
-        self.atmosphere_model: Callable = None
+        self._atmosphere_model: Callable = None
         self.config: SimConfig = config
 
         self.load_config(config)
@@ -35,7 +35,7 @@ class Simulator:
         models = get_available_atmos_models()
         if model_string in models:
             model_factory: Callable = models[model_string]
-            self.atmosphere_model, model_kwargs = model_factory(**model_kwargs)
+            self._atmosphere_model, model_kwargs = model_factory(**model_kwargs)
             self.config.atmosphere_model = model_string
             self.config.atmosphere_model_kwargs = model_kwargs
         else:
@@ -44,7 +44,7 @@ class Simulator:
             )
 
     def atmosphere(self, state: list[float], time: float) -> float:
-        return self.atmosphere_model(state, time)
+        return self._atmosphere_model(state, time)
 
     def run(self):
         self.check_set_up()
@@ -52,7 +52,7 @@ class Simulator:
     def check_set_up(self) -> None:
         """Check all required modules are initialised"""
         errors = []
-        if self.atmosphere_model is None:
+        if self._atmosphere_model is None:
             errors.append("Atmosphere model hasn't been set!")
 
         if errors:
