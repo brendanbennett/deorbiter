@@ -56,7 +56,7 @@ class Simulator:
             errors.append("Atmosphere model hasn't been set!")
 
         if errors:
-            raise NotImplementedError(" ".join(errors))
+            raise NotImplementedError(" | ".join(errors))
 
     @property
     def x1(self):
@@ -70,7 +70,7 @@ class Simulator:
     def x3(self):
         assert (
             self.config.dimension >= 3
-        ), "Attempted to access x3 coordinate from 3D simulator"
+        ), "Attempted to access x3 coordinate from 2D simulator"
         return [xt[2] for xt in self.x]
 
     def gather_data(self) -> SimData:
