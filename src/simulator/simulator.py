@@ -6,7 +6,13 @@ import matplotlib.pyplot as plt
 
 import src.simulator.atmos as atmos
 from src.data_models import SimConfig, SimData
-from src.utils.constants import EARTH_RADIUS, GM_EARTH, SATELLITE_MASS
+from src.utils.constants import (
+    EARTH_RADIUS,
+    GM_EARTH,
+    SATELLITE_MASS,
+    MEAN_DRAG_COEFF,
+    MEAN_XSECTIONAL_AREA,
+)
 from src.utils.dataio import save_sim_data
 
 
@@ -43,69 +49,86 @@ class Simulator:
             raise ValueError(
                 f"Model {model_string} is not defined in atmos.py!"
             )
-            
+
     def _pos_from_state(self, state: np.ndarray) -> np.ndarray:
-        return state[:self.dim]
-    
+        return state[: self.dim]
+
     def _vel_from_state(self, state: np.ndarray) -> np.ndarray:
-        return state[self.dim:]
+        return state[self.dim :]
 
     def atmosphere(self, state: np.ndarray, time: float) -> float:
         return self._atmosphere_model(state, time)
-    
+
     def _gravity_accel(self, state: np.ndarray) -> np.ndarray:
         """Calculate acceleration by gravity"""
-        position = state[:self.dim]
+        position = state[: self.dim]
         radius = np.linalg.norm(position)
-        direction = position / np.linalg.norm(position)
-        return - direction * GM_EARTH / (radius**2)
-    
+        return -position * GM_EARTH / (radius**3)
+
+    def _drag_accel(self, state: np.ndarray, time: float) -> np.ndarray:
+        accel = (
+            -(1 / (2 * SATELLITE_MASS))
+            * self.atmosphere(state, time)
+            * MEAN_XSECTIONAL_AREA
+            * MEAN_DRAG_COEFF
+            * state[self.dim :]
+            * np.linalg.norm(state[self.dim :])
+        )
+        return accel
+
     def _calculate_accel(self, state: np.ndarray, time: float) -> float:
-        return self._gravity_accel(state=state)
-    
+        drag_accel = self._drag_accel(state=state, time=time)
+        grav_accel = self._gravity_accel(state=state)
+        # print(f"state {state} at time {time} has drag accel {np.linalg.norm(drag_accel)} and gravity accel {np.linalg.norm(grav_accel)}")
+        return drag_accel + grav_accel
+
     def _step_time(self) -> None:
         self.times.append(self.times[-1] + self.config.time_step)
-    
+
     def _step_state(self) -> None:
         """Super janky state step function"""
-        # TODO make easily extendable. 
-        # Need to solve issue that some integration methods need more points as
+        # TODO make easily extendable.
         accel = self._calculate_accel(self.states[-1], self.times[-1])
         self._step_time()
         next_state = np.array(self.states[-1])
         # update position according to previus velocity
-        next_state[:self.dim] += self.states[-1][self.dim:] * self.config.time_step
+        next_state[: self.dim] += (
+            self.states[-1][self.dim :] * self.config.time_step
+        )
         # update velocity according to acceleration at previous state
-        next_state[self.dim:] += accel * self.config.time_step
+        next_state[self.dim :] += accel * self.config.time_step
         self.states.append(next_state)
-        
+
     def is_terminal(self, state: np.ndarray) -> bool:
         return np.linalg.norm(self._pos_from_state(state)) < EARTH_RADIUS
 
     def run(self, steps: int = None):
         self.check_set_up()
-        
+
         iters = 0
         while not self.is_terminal(self.states[-1]):
             if steps is not None and iters >= steps:
                 break
             self._step_state()
             iters += 1
-        print(f"Ran {iters} iterations at time step of {self.config.time_step} seconds")
-
+        else:
+            print(f"Impacted at {self.states[-1][:self.dim]} at velocity {self.states[-1][self.dim:]} at time {self.times[-1]} seconds.")
+        print(
+            f"Ran {iters} iterations at time step of {self.config.time_step} seconds"
+        )
 
     def check_set_up(self) -> None:
         """Check all required modules are initialised"""
         errors = []
         if self._atmosphere_model is None:
             errors.append("Atmosphere model hasn't been set!")
-            
+
         if self.config.time_step is None:
             errors.append("Time step hasn't been set!")
 
         if errors:
             raise NotImplementedError(" | ".join(errors))
-        
+
     @property
     def dim(self):
         return self.config.dimension
@@ -179,16 +202,20 @@ if __name__ == "__main__":
     # Run me with
     # mir-orbiter$ python -m src.simulator.simulator
 
-    sim = Simulator(SimConfig(time_step=1, atmosphere_model="coesa_atmos"))
+    sim = Simulator(SimConfig(time_step=0.1, atmosphere_model="coesa_atmos"))
     # Initial conditions
-    sim.states.append(np.array([EARTH_RADIUS + 20000, 0, 0, 8000], dtype=np.dtype("float64")))
+    sim.states.append(
+        np.array([EARTH_RADIUS + 85000, 0, 0, 8000], dtype=np.dtype("float64"))
+    )
     sim.times.append(0)
-    
-    sim.run(100000)
+
+    sim.run(10000)
     fig, ax = plt.subplots()
     ax.plot(sim.x1, sim.x2)
-    earth = plt.Circle((0,0), radius=EARTH_RADIUS, fill=False)
+    earth = plt.Circle((0, 0), radius=EARTH_RADIUS, fill=False)
     ax.add_patch(earth)
+    ax.set_xlim([5e6, 6.5e6])
+    ax.set_ylim([-2e5, 4e6])
     plt.show()
 
     sim.save_data("sim_data.json")
