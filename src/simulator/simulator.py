@@ -111,6 +111,15 @@ def get_available_atmos_models() -> dict[str:Callable]:
         dict[str, Callable]: Dictionary of model name keys and function values
     """
     full_list = getmembers(atmos, isfunction)
+    # Atmosphere function factories have the __atmos__ attribute set to True.
+    # This is so this function doesn't get confused with other functions defined
+    # in atmos. This can be avoided by defining these functions with an _underscore
+    # at the beginning but this check makes this unnecessary.
+    full_list = [
+        func
+        for func in full_list
+        if hasattr(func[1], "__atmos__") and func[1].__atmos__ == True
+    ]
     return {i[0]: i[1] for i in full_list}
 
 
@@ -126,7 +135,7 @@ if __name__ == "__main__":
     # print(sim.atmosphere([1,2]))
 
     print(get_available_atmos_models())
-    sim.set_atmosphere_model("icao_standard_atmos")
+    sim.set_atmosphere_model("coesa_atmos")
     print(sim.atmosphere([EARTH_RADIUS + 10000, 10000, 0, 0], 10))
 
     sim.save_data("sim_data.json")
