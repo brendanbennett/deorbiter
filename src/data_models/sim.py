@@ -1,6 +1,8 @@
 from typing import Optional
 
 from pydantic import BaseModel, NonNegativeFloat
+
+
 class SimConfig(BaseModel):
     # By default, our simulation 2 dimensional
     dimension: int = 2

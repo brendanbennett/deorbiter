@@ -1,19 +1,19 @@
+from inspect import getmembers, isfunction
+from typing import Callable
+
 import numpy as np
 
-from typing import Callable
-from inspect import getmembers, isfunction
-
-from src.utils.dataio import save_sim_data
-from src.data_models import SimData, SimConfig
-
 import src.simulator.atmos as atmos
+from src.data_models import SimConfig, SimData
+from src.utils.constants import EARTH_RADIUS
+from src.utils.dataio import save_sim_data
 
 
 class Simulator:
     def __init__(self, config: SimConfig) -> None:
         self.x: list[tuple] = None
         self.times: list[float] = list()
-        self.atmosphere_model: Callable = None
+        self._atmosphere_model: Callable = None
         self.config: SimConfig = config
 
         self.load_config(config)
@@ -35,7 +35,7 @@ class Simulator:
         models = get_available_atmos_models()
         if model_string in models:
             model_factory: Callable = models[model_string]
-            self.atmosphere_model, model_kwargs = model_factory(**model_kwargs)
+            self._atmosphere_model, model_kwargs = model_factory(**model_kwargs)
             self.config.atmosphere_model = model_string
             self.config.atmosphere_model_kwargs = model_kwargs
         else:
@@ -44,7 +44,7 @@ class Simulator:
             )
 
     def atmosphere(self, state: list[float], time: float) -> float:
-        return self.atmosphere_model(state, time)
+        return self._atmosphere_model(state, time)
 
     def run(self):
         self.check_set_up()
@@ -52,7 +52,7 @@ class Simulator:
     def check_set_up(self) -> None:
         """Check all required modules are initialised"""
         errors = []
-        if self.atmosphere_model is None:
+        if self._atmosphere_model is None:
             errors.append("Atmosphere model hasn't been set!")
 
         if errors:
@@ -111,6 +111,15 @@ def get_available_atmos_models() -> dict[str:Callable]:
         dict[str, Callable]: Dictionary of model name keys and function values
     """
     full_list = getmembers(atmos, isfunction)
+    # Atmosphere function factories have the __atmos__ attribute set to True.
+    # This is so this function doesn't get confused with other functions defined
+    # in atmos. This can be avoided by defining these functions with an _underscore
+    # at the beginning but this check makes this unnecessary.
+    full_list = [
+        func
+        for func in full_list
+        if hasattr(func[1], "__atmos__") and func[1].__atmos__ == True
+    ]
     return {i[0]: i[1] for i in full_list}
 
 
@@ -122,11 +131,11 @@ if __name__ == "__main__":
     sim.x = np.array([np.linspace(0, 20, 20), np.random.normal(size=20)]).T
     sim.times = np.linspace(0, 100, 20)
 
-    sim.save_data("sim_data.json")
-
     # Raises unset atmos error
     # print(sim.atmosphere([1,2]))
 
     print(get_available_atmos_models())
-    sim.set_atmosphere_model("simple_atmos")
-    print(sim.atmosphere([7e6, 7e6], 10))
+    sim.set_atmosphere_model("coesa_atmos")
+    print(sim.atmosphere([EARTH_RADIUS + 10000, 10000, 0, 0], 10))
+
+    sim.save_data("sim_data.json")

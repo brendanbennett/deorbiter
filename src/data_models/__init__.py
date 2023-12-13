@@ -1,3 +1,3 @@
-from .sim import SimData, SimConfig
+from .sim import SimConfig, SimData
 
 __all__ = ["SimData", "SimConfig"]
