@@ -1,11 +1,11 @@
 from typing import Callable
-from functools import wraps
 
 import numpy as np
 from ambiance import Atmosphere as IcaoAtmosphere
 from pyatmos import coesa76 as _coesa76
 
 from src.utils.constants import AIR_DENSITY_SEA_LEVEL, EARTH_RADIUS
+
 
 # Marks atmosphere model factory functions
 def atmosphere_model(func):
