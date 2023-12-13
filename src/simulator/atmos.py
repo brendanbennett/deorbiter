@@ -52,7 +52,7 @@ def icao_standard_atmos(earth_radius: float = EARTH_RADIUS):
     
     max_height = 81020
     density_at_max_height = IcaoAtmosphere(max_height).density
-    def density(state: tuple[float], time: float):
+    def density(state: np.ndarray, time: float):
         assert len(state) % 2 == 0
         dim = int(len(state) / 2)
         position = state[:dim]
@@ -70,7 +70,7 @@ def icao_standard_atmos(earth_radius: float = EARTH_RADIUS):
 def coesa_atmos(earth_radius: float = EARTH_RADIUS):
     model_kwargs: dict = locals()
     
-    def density(state: tuple[float], time: float):
+    def density(state: np.ndarray, time: float):
         assert len(state) % 2 == 0
         dim = int(len(state) / 2)
         position = state[:dim]
