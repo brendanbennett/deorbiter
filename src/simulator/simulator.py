@@ -1,5 +1,7 @@
 from inspect import getmembers, isfunction
 from typing import Callable
+from collections import deque
+from time import thread_time_ns
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -85,19 +87,70 @@ class Simulator:
     def _step_time(self) -> None:
         self.times.append(self.times[-1] + self.config.time_step)
 
-    def _step_state(self) -> None:
+    def _objective_function(self, state: np.ndarray, time: float) -> np.ndarray:
+        """The function that gives the derivative our state vector x' = f(x,t). 
+        Returns a flat array (x1', x2', x3', v1', v2', v3')"""
+        accel = self._calculate_accel(state, time)
+        return np.concatenate((state[self.dim:], accel))
+
+    # TODO make easily extendable.
+    def _step_state_euler(self) -> None:
         """Super janky state step function"""
-        # TODO make easily extendable.
         accel = self._calculate_accel(self.states[-1], self.times[-1])
         self._step_time()
         next_state = np.array(self.states[-1])
-        # update position according to previus velocity
-        next_state[: self.dim] += (
-            self.states[-1][self.dim :] * self.config.time_step
-        )
-        # update velocity according to acceleration at previous state
-        next_state[self.dim :] += accel * self.config.time_step
+        next_state += self._objective_function(self.states[-1], self.times[-1])
         self.states.append(next_state)
+
+    def _step_state_adams_bashforth(self, buffer: deque) -> None:
+        func_n_minus_2, func_n_minus_1 = tuple(buffer)
+        # Update with two step Adams-Bashforth
+        next_state = self.states[-1] + (3/2) * self.config.time_step * func_n_minus_1 - (1/2) * self.config.time_step * func_n_minus_2
+        # Update buffer with next function evaluation f(xn, tn)
+        self._step_time()
+        buffer.append(self._objective_function(next_state, self.times[-1]))
+        buffer.popleft()
+        self.states.append(next_state)
+
+    def _run_euler(self, steps: int | None) -> None:
+        
+        print("Running simulation with Euler integrator")
+        iters = 0
+        while not self.is_terminal(self.states[-1]):
+            if steps is not None and iters >= steps:
+                break
+            self._step_state_euler()
+            iters += 1
+        else:
+            print(
+                f"Impacted at {self.states[-1][:self.dim]} at velocity {self.states[-1][self.dim:]} at time {self.times[-1]} seconds."
+            )
+        print(
+            f"Ran {iters} iterations at time step of {self.config.time_step} seconds"
+        )
+
+    def _run_adams_bashforth(self, steps) -> None:
+        
+        print("Running simulation with Two-step Adams-Bashforth integrator")
+        function_buffer = deque()
+        iters = 0
+        # Initialise function buffer with f(x0, t0) and f(x1, t1)
+        function_buffer.append(self._objective_function(self.states[-1], self.times[-1]))
+        self._step_state_euler()
+        function_buffer.append(self._objective_function(self.states[-1], self.times[-1]))
+        
+        while not self.is_terminal(self.states[-1]):
+            if steps is not None and iters >= steps:
+                break
+            self._step_state_adams_bashforth(function_buffer)
+            iters += 1
+        else:
+            print(
+                f"Impacted at {self.states[-1][:self.dim]} at velocity {self.states[-1][self.dim:]} at time {self.times[-1]} seconds."
+            )
+        print(
+            f"Ran {iters} iterations at time step of {self.config.time_step} seconds"
+        )
 
     def is_terminal(self, state: np.ndarray) -> bool:
         return np.linalg.norm(self._pos_from_state(state)) < EARTH_RADIUS
@@ -105,17 +158,14 @@ class Simulator:
     def run(self, steps: int = None):
         self.check_set_up()
 
-        iters = 0
-        while not self.is_terminal(self.states[-1]):
-            if steps is not None and iters >= steps:
-                break
-            self._step_state()
-            iters += 1
-        else:
-            print(f"Impacted at {self.states[-1][:self.dim]} at velocity {self.states[-1][self.dim:]} at time {self.times[-1]} seconds.")
-        print(
-            f"Ran {iters} iterations at time step of {self.config.time_step} seconds"
-        )
+        start_time = thread_time_ns()
+        if self.config.simulation_technique == "euler":
+            self._run_euler(steps)
+        elif self.config.simulation_technique == "adams_bashforth":
+            self._run_adams_bashforth(steps)
+        elapsed_time = (thread_time_ns() - start_time)*1e-9
+        
+        print(f"Simulation finished in {elapsed_time:5.5f} seconds")
 
     def check_set_up(self) -> None:
         """Check all required modules are initialised"""
@@ -125,6 +175,9 @@ class Simulator:
 
         if self.config.time_step is None:
             errors.append("Time step hasn't been set!")
+            
+        if self.config.simulation_technique is None:
+            errors.append("Simulation technique hasn't been set!")
 
         if errors:
             raise NotImplementedError(" | ".join(errors))
@@ -202,7 +255,13 @@ if __name__ == "__main__":
     # Run me with
     # mir-orbiter$ python -m src.simulator.simulator
 
-    sim = Simulator(SimConfig(time_step=0.1, atmosphere_model="coesa_atmos"))
+    sim = Simulator(
+        SimConfig(
+            time_step=0.1,
+            atmosphere_model="coesa_atmos",
+            simulation_technique="adams_bashforth",
+        )
+    )
     # Initial conditions
     sim.states.append(
         np.array([EARTH_RADIUS + 85000, 0, 0, 8000], dtype=np.dtype("float64"))
