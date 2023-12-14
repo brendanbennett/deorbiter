@@ -10,11 +10,12 @@ class SimConfig(BaseModel):
     time_step: Optional[float] = None
 
     # TODO make Enums so we only have a few options
-    simulation_technique: Optional[str] = None
+    simulation_method: Optional[str] = None
 
     atmosphere_model: Optional[str] = None
-    
+
     atmosphere_model_kwargs: dict = dict()
+
 
 class SimData(BaseModel):
     # Data Entries

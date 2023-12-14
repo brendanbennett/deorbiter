@@ -18,12 +18,26 @@ from src.utils.constants import (
 from src.utils.dataio import save_sim_data
 
 
+def sim_method(name: str) -> Callable:
+    if not isinstance(name, str):
+        raise SyntaxError(
+            "Simulation method decorator must be supplied with a name!"
+        )
+
+    def wrapper(method: Callable) -> Callable:
+        method.__sim_method_name__: str = name
+        return method
+
+    return wrapper
+
+
 class Simulator:
     def __init__(self, config: SimConfig) -> None:
         self.states: list[np.ndarray] = None
         self.times: list[float] = list()
         self._atmosphere_model: Callable = None
         self.config: SimConfig = config
+        self.available_sim_methods = get_available_sim_methods()
 
         self.load_config(config)
 
@@ -85,38 +99,44 @@ class Simulator:
         return drag_accel + grav_accel
 
     def _step_time(self) -> None:
-        self.times.append(self.times[-1] + self.config.time_step)
+        self.times.append(self.times[-1] + self.time_step)
 
     def _objective_function(self, state: np.ndarray, time: float) -> np.ndarray:
-        """The function that gives the derivative our state vector x' = f(x,t). 
+        """The function that gives the derivative our state vector x' = f(x,t).
         Returns a flat array (x1', x2', x3', v1', v2', v3')"""
         accel = self._calculate_accel(state, time)
-        return np.concatenate((state[self.dim:], accel))
+        return np.concatenate((state[self.dim :], accel))
 
     # TODO make easily extendable.
     def _step_state_euler(self) -> None:
         """Super janky state step function"""
-        accel = self._calculate_accel(self.states[-1], self.times[-1])
         self._step_time()
         next_state = np.array(self.states[-1])
-        next_state += self._objective_function(self.states[-1], self.times[-1])
+        next_state += (
+            self._objective_function(self.states[-1], self.times[-1])
+            * self.time_step
+        )
         self.states.append(next_state)
 
-    def _step_state_adams_bashforth(self, buffer: deque) -> None:
-        func_n_minus_2, func_n_minus_1 = tuple(buffer)
+    def _step_state_adams_bashforth(self, buffer: list) -> None:
+        func_n_minus_2, func_n_minus_1 = buffer
         # Update with two step Adams-Bashforth
-        next_state = self.states[-1] + (3/2) * self.config.time_step * func_n_minus_1 - (1/2) * self.config.time_step * func_n_minus_2
+        next_state = (
+            self.states[-1]
+            + (3 / 2) * self.time_step * func_n_minus_1
+            - (1 / 2) * self.time_step * func_n_minus_2
+        )
         # Update buffer with next function evaluation f(xn, tn)
         self._step_time()
         buffer.append(self._objective_function(next_state, self.times[-1]))
-        buffer.popleft()
+        del buffer[0]
         self.states.append(next_state)
-        
+
     def is_terminal(self, state: np.ndarray) -> bool:
         return np.linalg.norm(self._pos_from_state(state)) <= EARTH_RADIUS
 
+    @sim_method("euler")
     def _run_euler(self, steps: int | None) -> None:
-        
         print("Running simulation with Euler integrator")
         iters = 0
         while not self.is_terminal(self.states[-1]):
@@ -124,46 +144,50 @@ class Simulator:
                 break
             self._step_state_euler()
             iters += 1
-        
+
         print(
-            f"Ran {iters} iterations at time step of {self.config.time_step} seconds"
+            f"Ran {iters} iterations at time step of {self.time_step} seconds"
         )
 
+    @sim_method("adams_bashforth")
     def _run_adams_bashforth(self, steps: int | None) -> None:
-        
         print("Running simulation with Two-step Adams-Bashforth integrator")
-        function_buffer = deque()
+        function_buffer = list()
         iters = 0
         # Initialise function buffer with f(x0, t0) and f(x1, t1)
-        function_buffer.append(self._objective_function(self.states[-1], self.times[-1]))
+        function_buffer.append(
+            self._objective_function(self.states[-1], self.times[-1])
+        )
         self._step_state_euler()
-        function_buffer.append(self._objective_function(self.states[-1], self.times[-1]))
-        
+        function_buffer.append(
+            self._objective_function(self.states[-1], self.times[-1])
+        )
+
         while not self.is_terminal(self.states[-1]):
             if steps is not None and iters >= steps:
                 break
             self._step_state_adams_bashforth(function_buffer)
             iters += 1
-        
+
         print(
-            f"Ran {iters} iterations at time step of {self.config.time_step} seconds"
+            f"Ran {iters} iterations at time step of {self.time_step} seconds"
         )
 
     def run(self, steps: int = None):
         self.check_set_up()
 
         start_time = thread_time_ns()
-        if self.config.simulation_technique == "euler":
-            self._run_euler(steps)
-        elif self.config.simulation_technique == "adams_bashforth":
-            self._run_adams_bashforth(steps)
-        elapsed_time = (thread_time_ns() - start_time)*1e-9
-        
+
+        # Run with selected simulation method
+        getattr(self, self.available_sim_methods[self.config.simulation_method])(steps)
+
+        elapsed_time = (thread_time_ns() - start_time) * 1e-9
+
         if self.is_terminal(self.states[-1]):
             print(
                 f"Impacted at {self.states[-1][:self.dim]} at velocity {self.states[-1][self.dim:]} at simulated time {self.times[-1]}s."
             )
-        
+
         print(f"Simulation finished in {elapsed_time:5.5f} seconds")
 
     def check_set_up(self) -> None:
@@ -174,12 +198,19 @@ class Simulator:
 
         if self.config.time_step is None:
             errors.append("Time step hasn't been set!")
+
+        if self.config.simulation_method is None:
+            errors.append("Simulation method hasn't been set!")
             
-        if self.config.simulation_technique is None:
-            errors.append("Simulation technique hasn't been set!")
+        if self.config.simulation_method not in self.available_sim_methods:
+            errors.append(f"{self.config.simulation_method} is not an implemented simulation method! Must be one of: {list(self.available_sim_methods.keys())}")
 
         if errors:
             raise NotImplementedError(" | ".join(errors))
+
+    @property
+    def time_step(self):
+        return self.config.time_step
 
     @property
     def dim(self):
@@ -195,9 +226,9 @@ class Simulator:
 
     @property
     def x3(self):
-        assert (
-            self.dim >= 3
-        ), "Attempted to access x3 coordinate from 2D simulator"
+        # assert (
+        #     self.dim >= 3
+        # ), "Attempted to access x3 coordinate from 2D simulator"
         return [xt[2] for xt in self.states]
 
     def gather_data(self) -> SimData:
@@ -250,6 +281,15 @@ def get_available_atmos_models() -> dict[str:Callable]:
     return {i[0]: i[1] for i in full_list}
 
 
+def get_available_sim_methods() -> dict[str, str]:
+    """Python magic to find the names of implemented simulation methods marked with @sim_method([name])"""
+    return {
+        getattr(Simulator, i).__sim_method_name__: getattr(Simulator, i).__name__
+        for i in dir(Simulator)
+        if hasattr(getattr(Simulator, i), "__sim_method_name__")
+    }
+
+
 if __name__ == "__main__":
     # Run me with
     # mir-orbiter$ python -m src.simulator.simulator
@@ -258,7 +298,7 @@ if __name__ == "__main__":
         SimConfig(
             time_step=0.1,
             atmosphere_model="coesa_atmos",
-            simulation_technique="euler",
+            simulation_method="euler",
         )
     )
     # Initial conditions
