@@ -111,6 +111,9 @@ class Simulator:
         buffer.append(self._objective_function(next_state, self.times[-1]))
         buffer.popleft()
         self.states.append(next_state)
+        
+    def is_terminal(self, state: np.ndarray) -> bool:
+        return np.linalg.norm(self._pos_from_state(state)) <= EARTH_RADIUS
 
     def _run_euler(self, steps: int | None) -> None:
         
@@ -121,15 +124,12 @@ class Simulator:
                 break
             self._step_state_euler()
             iters += 1
-        else:
-            print(
-                f"Impacted at {self.states[-1][:self.dim]} at velocity {self.states[-1][self.dim:]} at time {self.times[-1]} seconds."
-            )
+        
         print(
             f"Ran {iters} iterations at time step of {self.config.time_step} seconds"
         )
 
-    def _run_adams_bashforth(self, steps) -> None:
+    def _run_adams_bashforth(self, steps: int | None) -> None:
         
         print("Running simulation with Two-step Adams-Bashforth integrator")
         function_buffer = deque()
@@ -144,16 +144,10 @@ class Simulator:
                 break
             self._step_state_adams_bashforth(function_buffer)
             iters += 1
-        else:
-            print(
-                f"Impacted at {self.states[-1][:self.dim]} at velocity {self.states[-1][self.dim:]} at time {self.times[-1]} seconds."
-            )
+        
         print(
             f"Ran {iters} iterations at time step of {self.config.time_step} seconds"
         )
-
-    def is_terminal(self, state: np.ndarray) -> bool:
-        return np.linalg.norm(self._pos_from_state(state)) < EARTH_RADIUS
 
     def run(self, steps: int = None):
         self.check_set_up()
@@ -164,6 +158,11 @@ class Simulator:
         elif self.config.simulation_technique == "adams_bashforth":
             self._run_adams_bashforth(steps)
         elapsed_time = (thread_time_ns() - start_time)*1e-9
+        
+        if self.is_terminal(self.states[-1]):
+            print(
+                f"Impacted at {self.states[-1][:self.dim]} at velocity {self.states[-1][self.dim:]} at simulated time {self.times[-1]}s."
+            )
         
         print(f"Simulation finished in {elapsed_time:5.5f} seconds")
 
@@ -259,7 +258,7 @@ if __name__ == "__main__":
         SimConfig(
             time_step=0.1,
             atmosphere_model="coesa_atmos",
-            simulation_technique="adams_bashforth",
+            simulation_technique="euler",
         )
     )
     # Initial conditions
