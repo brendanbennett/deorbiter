@@ -1,20 +1,15 @@
-from inspect import getmembers, isfunction
-from typing import Callable
 from collections import deque
+from inspect import getmembers, isfunction
 from time import thread_time_ns
+from typing import Callable
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 import src.simulator.atmos as atmos
 from src.data_models import SimConfig, SimData
-from src.utils.constants import (
-    EARTH_RADIUS,
-    GM_EARTH,
-    SATELLITE_MASS,
-    MEAN_DRAG_COEFF,
-    MEAN_XSECTIONAL_AREA,
-)
+from src.utils.constants import (EARTH_RADIUS, GM_EARTH, MEAN_DRAG_COEFF,
+                                 MEAN_XSECTIONAL_AREA, SATELLITE_MASS)
 from src.utils.dataio import save_sim_data
 
 
@@ -107,7 +102,6 @@ class Simulator:
         accel = self._calculate_accel(state, time)
         return np.concatenate((state[self.dim :], accel))
 
-    # TODO make easily extendable.
     def _step_state_euler(self) -> None:
         """Super janky state step function"""
         self._step_time()
@@ -179,7 +173,9 @@ class Simulator:
         start_time = thread_time_ns()
 
         # Run with selected simulation method
-        getattr(self, self.available_sim_methods[self.config.simulation_method])(steps)
+        getattr(
+            self, self.available_sim_methods[self.config.simulation_method]
+        )(steps)
 
         elapsed_time = (thread_time_ns() - start_time) * 1e-9
 
@@ -201,9 +197,11 @@ class Simulator:
 
         if self.config.simulation_method is None:
             errors.append("Simulation method hasn't been set!")
-            
+
         if self.config.simulation_method not in self.available_sim_methods:
-            errors.append(f"{self.config.simulation_method} is not an implemented simulation method! Must be one of: {list(self.available_sim_methods.keys())}")
+            errors.append(
+                f"{self.config.simulation_method} is not an implemented simulation method! Must be one of: {list(self.available_sim_methods.keys())}"
+            )
 
         if errors:
             raise NotImplementedError(" | ".join(errors))
@@ -284,7 +282,9 @@ def get_available_atmos_models() -> dict[str:Callable]:
 def get_available_sim_methods() -> dict[str, str]:
     """Python magic to find the names of implemented simulation methods marked with @sim_method([name])"""
     return {
-        getattr(Simulator, i).__sim_method_name__: getattr(Simulator, i).__name__
+        getattr(Simulator, i)
+        .__sim_method_name__: getattr(Simulator, i)
+        .__name__
         for i in dir(Simulator)
         if hasattr(getattr(Simulator, i), "__sim_method_name__")
     }
