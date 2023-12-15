@@ -61,17 +61,16 @@ class Simulator:
     """
 
     def __init__(self, config: SimConfig) -> None:
-        self.states: list[np.ndarray] = None
+        self.states: list[np.ndarray] = list()
         self.times: list[float] = list()
         self._atmosphere_model: Callable = None
         self._simulation_method: str = None
-        self.config: SimConfig = config
+        self.config: SimConfig = None
         self.available_sim_methods = get_available_sim_methods()
 
         self.load_config(config)
 
     def load_config(self, config: SimConfig):
-        self.states = list()
         self.config = config
 
         # Initialise atmosphere model if supplied
@@ -101,8 +100,7 @@ class Simulator:
     def set_simulation_method(self, sim_method_name: str = None):
         if sim_method_name not in self.available_sim_methods:
             raise NotImplementedError(
-                f"{self._simulation_method} is not an implemented simulation method! \
-                    Must be one of: {list(self.available_sim_methods.keys())}"
+                f"{self._simulation_method} is not an implemented simulation method! Must be one of: {list(self.available_sim_methods.keys())}"
             )
         self._simulation_method = sim_method_name
         self.config.simulation_method = sim_method_name
@@ -136,7 +134,8 @@ class Simulator:
     def _calculate_accel(self, state: np.ndarray, time: float) -> float:
         drag_accel = self._drag_accel(state=state, time=time)
         grav_accel = self._gravity_accel(state=state)
-        # print(f"state {state} at time {time} has drag accel {np.linalg.norm(drag_accel)} and gravity accel {np.linalg.norm(grav_accel)}")
+        # print(f"state {state} at time {time} has drag accel {np.linalg.norm(drag_accel)} \
+        # and gravity accel {np.linalg.norm(grav_accel)}")
         return drag_accel + grav_accel
 
     def _step_time(self) -> None:
@@ -149,7 +148,6 @@ class Simulator:
         return np.concatenate((state[self.dim :], accel))
 
     def _step_state_euler(self) -> None:
-        """Super janky state step function"""
         self._step_time()
         next_state = np.array(self.states[-1])
         next_state += (
@@ -177,6 +175,7 @@ class Simulator:
 
     @sim_method("euler")
     def _run_euler(self, steps: int | None) -> None:
+        """Simple forward euler integration technique"""
         print("Running simulation with Euler integrator")
         iters = 0
         while not self.is_terminal(self.states[-1]):
@@ -191,6 +190,12 @@ class Simulator:
 
     @sim_method("adams_bashforth")
     def _run_adams_bashforth(self, steps: int | None) -> None:
+        """Two-step Adams-Bashforth integration technique. 
+        
+        A linear multistep method that only samples the function at the same time steps as are output.
+        This contrasts with the Runge-Kutta methods which take intermediatesamples between time steps.
+        This allows buffering of previous calls to the right-hand-side function of the ODE which is 
+        fairly expensive."""
         print("Running simulation with Two-step Adams-Bashforth integrator")
         function_buffer = list()
         iters = 0
@@ -198,6 +203,7 @@ class Simulator:
         function_buffer.append(
             self._objective_function(self.states[-1], self.times[-1])
         )
+        # We calculate f(x1, t1) using the forward euler method.
         self._step_state_euler()
         function_buffer.append(
             self._objective_function(self.states[-1], self.times[-1])
@@ -220,18 +226,17 @@ class Simulator:
 
         # Run with selected simulation method
         getattr(
-            self, self.available_sim_methods[self.config.simulation_method]
+            self, self.available_sim_methods[self._simulation_method]
         )(steps)
 
         elapsed_time = (thread_time_ns() - start_time) * 1e-9
 
         if self.is_terminal(self.states[-1]):
             print(
-                f"Impacted at {self.states[-1][:self.dim]} at velocity \
-                    {self.states[-1][self.dim:]} at simulated time {self.times[-1]}s."
+                f"Impacted at {self.states[-1][:self.dim]} at velocity {self.states[-1][self.dim:]} at simulated time {self.times[-1]}s."
             )
 
-        print(f"Simulation finished in {elapsed_time:5.5f} seconds")
+        print(f"Simulation finished in {elapsed_time:.5f} seconds")
 
     def check_set_up(self) -> None:
         """Check all required modules are initialised"""
@@ -246,8 +251,7 @@ class Simulator:
             errors.append("Simulation method hasn't been set! Set with set_simulation_method(\"[name]\")")
         elif self._simulation_method not in self.available_sim_methods:
             errors.append(
-                f"{self._simulation_method} is not an implemented simulation method! \
-                    Must be one of: {list(self.available_sim_methods.keys())}"
+                f"{self._simulation_method} is not an implemented simulation method! Must be one of: {list(self.available_sim_methods.keys())}"
             )
 
         if errors:
@@ -327,7 +331,10 @@ def get_available_atmos_models() -> dict[str:Callable]:
 
 
 def get_available_sim_methods() -> dict[str, str]:
-    """Python magic to find the names of implemented simulation methods marked with @sim_method([name])"""
+    """Python magic to find the names of implemented simulation methods marked with `@sim_method("[name]")`.
+    
+    Returns:
+        dict[str, str]: a dictionary of `{human readable name: method name}`"""
     return {
         getattr(Simulator, i)
         .__sim_method_name__: getattr(Simulator, i)
