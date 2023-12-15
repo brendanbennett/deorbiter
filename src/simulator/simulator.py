@@ -1,4 +1,3 @@
-from collections import deque
 from inspect import getmembers, isfunction
 from time import thread_time_ns
 from typing import Callable
@@ -46,7 +45,7 @@ def sim_method(name: str) -> Callable:
 class Simulator:
     """Simulator class used to generate satellite simulation data.
     Must be initialised with a SimConfig instance. This config may be empty on initialisation,
-    but the 
+    but the
 
     Usage:
     ```
@@ -190,11 +189,11 @@ class Simulator:
 
     @sim_method("adams_bashforth")
     def _run_adams_bashforth(self, steps: int | None) -> None:
-        """Two-step Adams-Bashforth integration technique. 
-        
+        """Two-step Adams-Bashforth integration technique.
+
         A linear multistep method that only samples the function at the same time steps as are output.
         This contrasts with the Runge-Kutta methods which take intermediatesamples between time steps.
-        This allows buffering of previous calls to the right-hand-side function of the ODE which is 
+        This allows buffering of previous calls to the right-hand-side function of the ODE which is
         fairly expensive."""
         print("Running simulation with Two-step Adams-Bashforth integrator")
         function_buffer = list()
@@ -225,9 +224,9 @@ class Simulator:
         start_time = thread_time_ns()
 
         # Run with selected simulation method
-        getattr(
-            self, self.available_sim_methods[self._simulation_method]
-        )(steps)
+        getattr(self, self.available_sim_methods[self._simulation_method])(
+            steps
+        )
 
         elapsed_time = (thread_time_ns() - start_time) * 1e-9
 
@@ -242,13 +241,17 @@ class Simulator:
         """Check all required modules are initialised"""
         errors = []
         if self._atmosphere_model is None:
-            errors.append("Atmosphere model hasn't been set! Set with set_atmosphere_model(\"[name]\", model_kwargs)")
+            errors.append(
+                'Atmosphere model hasn\'t been set! Set with set_atmosphere_model("[name]", model_kwargs)'
+            )
 
         if self.config.time_step is None:
             errors.append("Time step hasn't been set!")
 
         if self._simulation_method is None:
-            errors.append("Simulation method hasn't been set! Set with set_simulation_method(\"[name]\")")
+            errors.append(
+                'Simulation method hasn\'t been set! Set with set_simulation_method("[name]")'
+            )
         elif self._simulation_method not in self.available_sim_methods:
             errors.append(
                 f"{self._simulation_method} is not an implemented simulation method! Must be one of: {list(self.available_sim_methods.keys())}"
@@ -332,7 +335,7 @@ def get_available_atmos_models() -> dict[str:Callable]:
 
 def get_available_sim_methods() -> dict[str, str]:
     """Python magic to find the names of implemented simulation methods marked with `@sim_method("[name]")`.
-    
+
     Returns:
         dict[str, str]: a dictionary of `{human readable name: method name}`"""
     return {
