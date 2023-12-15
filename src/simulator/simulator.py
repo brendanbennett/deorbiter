@@ -8,12 +8,29 @@ import numpy as np
 
 import src.simulator.atmos as atmos
 from src.data_models import SimConfig, SimData
-from src.utils.constants import (EARTH_RADIUS, GM_EARTH, MEAN_DRAG_COEFF,
-                                 MEAN_XSECTIONAL_AREA, SATELLITE_MASS)
+from src.utils.constants import (
+    EARTH_RADIUS,
+    GM_EARTH,
+    MEAN_DRAG_COEFF,
+    MEAN_XSECTIONAL_AREA,
+    SATELLITE_MASS,
+)
 from src.utils.dataio import save_sim_data
 
 
 def sim_method(name: str) -> Callable:
+    """Decorator to mark a Simulator class method as one which runs a simulation method.
+    A name must be provided as an argument. This name string will be the one used by
+    the end user to specify the simulation method at run time.
+
+    Usage:
+    ```
+    @sim_method("forward_euler")
+    def _run_forward_euler(...):
+        ...
+    ```"""
+
+    # Check that the programmer has provided a name.
     if not isinstance(name, str):
         raise SyntaxError(
             "Simulation method decorator must be supplied with a name!"
@@ -27,10 +44,27 @@ def sim_method(name: str) -> Callable:
 
 
 class Simulator:
+    """Simulator class used to generate satellite simulation data.
+    Must be initialised with a SimConfig instance. This config may be empty on initialisation,
+    but the 
+
+    Usage:
+    ```
+    sim_config = SimConfig(
+        time_step=0.1,
+        atmosphere_model="coesa_atmos",
+        simulation_method="euler",
+    )
+    sim = Simulator(sim_config)
+    sim.run(steps=10000)
+    ```
+    """
+
     def __init__(self, config: SimConfig) -> None:
         self.states: list[np.ndarray] = None
         self.times: list[float] = list()
         self._atmosphere_model: Callable = None
+        self._simulation_method: str = None
         self.config: SimConfig = config
         self.available_sim_methods = get_available_sim_methods()
 
@@ -47,6 +81,9 @@ class Simulator:
                 self.config.atmosphere_model_kwargs,
             )
 
+        if self.config.simulation_method is not None:
+            self.set_simulation_method(self.config.simulation_method)
+
     def set_atmosphere_model(
         self, model_string: str = None, model_kwargs: dict = dict()
     ) -> None:
@@ -58,8 +95,17 @@ class Simulator:
             self.config.atmosphere_model_kwargs = model_kwargs
         else:
             raise ValueError(
-                f"Model {model_string} is not defined in atmos.py!"
+                f"Model {model_string} is not defined in atmos.py! Defined models are {list(models.keys())}"
             )
+
+    def set_simulation_method(self, sim_method_name: str = None):
+        if sim_method_name not in self.available_sim_methods:
+            raise NotImplementedError(
+                f"{self._simulation_method} is not an implemented simulation method! \
+                    Must be one of: {list(self.available_sim_methods.keys())}"
+            )
+        self._simulation_method = sim_method_name
+        self.config.simulation_method = sim_method_name
 
     def _pos_from_state(self, state: np.ndarray) -> np.ndarray:
         return state[: self.dim]
@@ -181,7 +227,8 @@ class Simulator:
 
         if self.is_terminal(self.states[-1]):
             print(
-                f"Impacted at {self.states[-1][:self.dim]} at velocity {self.states[-1][self.dim:]} at simulated time {self.times[-1]}s."
+                f"Impacted at {self.states[-1][:self.dim]} at velocity \
+                    {self.states[-1][self.dim:]} at simulated time {self.times[-1]}s."
             )
 
         print(f"Simulation finished in {elapsed_time:5.5f} seconds")
@@ -190,17 +237,17 @@ class Simulator:
         """Check all required modules are initialised"""
         errors = []
         if self._atmosphere_model is None:
-            errors.append("Atmosphere model hasn't been set!")
+            errors.append("Atmosphere model hasn't been set! Set with set_atmosphere_model(\"[name]\", model_kwargs)")
 
         if self.config.time_step is None:
             errors.append("Time step hasn't been set!")
 
-        if self.config.simulation_method is None:
-            errors.append("Simulation method hasn't been set!")
-
-        if self.config.simulation_method not in self.available_sim_methods:
+        if self._simulation_method is None:
+            errors.append("Simulation method hasn't been set! Set with set_simulation_method(\"[name]\")")
+        elif self._simulation_method not in self.available_sim_methods:
             errors.append(
-                f"{self.config.simulation_method} is not an implemented simulation method! Must be one of: {list(self.available_sim_methods.keys())}"
+                f"{self._simulation_method} is not an implemented simulation method! \
+                    Must be one of: {list(self.available_sim_methods.keys())}"
             )
 
         if errors:

@@ -37,14 +37,14 @@ def test_simple_atmos_defaults():
 
 @pytest.mark.parametrize("model", list(get_available_atmos_models().keys()))
 def test_set_atmos_model_with_config(model):
-    sim = Simulator(SimConfig(atmosphere_model=model))
+    sim = Simulator(SimConfig(atmosphere_model=model, time_step=0.1, simulation_method="euler"))
     sim.check_set_up()
     assert sim.config.atmosphere_model == model
 
 
 @pytest.mark.parametrize("model", list(get_available_atmos_models().keys()))
 def test_set_atmos_model_with_method(model):
-    sim = Simulator(SimConfig())
+    sim = Simulator(SimConfig(time_step=0.1, simulation_method="euler"))
     sim.set_atmosphere_model(model)
     assert sim.config.atmosphere_model == model
 
