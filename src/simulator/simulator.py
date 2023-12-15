@@ -82,6 +82,25 @@ class Simulator:
         if self.config.simulation_method is not None:
             self.set_simulation_method(self.config.simulation_method)
 
+        if self.config.initial_values is not None:
+            initial_state, initial_time = self.config.initial_values
+            self.set_initial_conditions(initial_state, initial_time)
+
+    def _reset_state_and_time(self) -> None:
+        self.states = list()
+        self.times = list()
+
+    def set_initial_conditions(self, state: np.ndarray, time: float):
+        """Resets the simulation and initialises values with the given state vector and time"""
+        # Makes sure state is a numpy array
+        state = np.array(state)
+        assert state.shape == (
+            2 * self.dim,
+        ), f"Incorrect shape for initial state {state}. Expected {(2*self.dim,)}, got {state.shape}"
+        self._reset_state_and_time()
+        self.states.append(state)
+        self.times.append(time)
+
     def set_atmosphere_model(
         self, model_string: str = None, model_kwargs: dict = dict()
     ) -> None:
@@ -114,12 +133,29 @@ class Simulator:
         return self._atmosphere_model(state, time)
 
     def _gravity_accel(self, state: np.ndarray) -> np.ndarray:
-        """Calculate acceleration by gravity"""
+        """Calculate acceleration by gravity.
+        
+        Args:
+            state: (np.ndarray)
+            
+        Returns:
+            np.ndarray: Acceleration by gravity vector
+        """
         position = state[: self.dim]
         radius = np.linalg.norm(position)
         return -position * GM_EARTH / (radius**3)
 
     def _drag_accel(self, state: np.ndarray, time: float) -> np.ndarray:
+        """Calculates acceleration on the satellite due to drag in a particular state.
+        Uses the chosen atmosphere model to calculate air density.
+
+        Args:
+            state (np.ndarray)
+            time (float)
+
+        Returns:
+            np.ndarray: Acceleration by drag vector
+        """
         accel = (
             -(1 / (2 * SATELLITE_MASS))
             * self.atmosphere(state, time)
@@ -257,6 +293,11 @@ class Simulator:
                 f"{self._simulation_method} is not an implemented simulation method! Must be one of: {list(self.available_sim_methods.keys())}"
             )
 
+        if len(self.states) == 0 or len(self.times) == 0:
+            errors.append(
+                "Initial conditions not set! Set with set_initial_conditions(state, time)"
+            )
+
         if errors:
             raise NotImplementedError(" | ".join(errors))
 
@@ -359,10 +400,10 @@ if __name__ == "__main__":
         )
     )
     # Initial conditions
-    sim.states.append(
-        np.array([EARTH_RADIUS + 85000, 0, 0, 8000], dtype=np.dtype("float64"))
+    sim.states.set_initial_conditions(
+        np.array([EARTH_RADIUS + 85000, 0, 0, 8000], dtype=np.dtype("float64")),
+        0.0,
     )
-    sim.times.append(0)
 
     sim.run(10000)
     fig, ax = plt.subplots()

@@ -9,9 +9,7 @@ class SimConfig(BaseModel):
 
     time_step: Optional[float] = None
 
-    initial_state: Optional[tuple[float]] = None
-    
-    initial_time: Optional[float] = None
+    initial_values: Optional[tuple[tuple,float]] = None
 
     simulation_method: Optional[str] = None
 
