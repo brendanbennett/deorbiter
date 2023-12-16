@@ -80,3 +80,31 @@ def coesa_atmos(earth_radius: float = EARTH_RADIUS):
         return _coesa76(height_in_km).rho
     
     return density, model_kwargs
+
+@atmosphere_model
+def coesa_atmos_fast(earth_radius: float = EARTH_RADIUS, precision: int = 2):
+    """Uses a lookup table of atmosphere densities """
+    model_kwargs: dict = locals()
+    
+    start, end = -611, 1000000
+    rounded_start = np.round(start, decimals=-precision)
+    start = rounded_start if rounded_start >= start else rounded_start + 10**precision
+    sample_heights = np.arange(start, end+1, step=10**precision)
+    sampled_densities = _coesa76(sample_heights*1e-3).rho
+    samples = dict(zip(sample_heights, sampled_densities))
+    
+    def density(state: np.ndarray, time: float):
+        assert len(state) % 2 == 0
+        dim = int(len(state) / 2)
+        position = state[:dim]
+        
+        height = np.linalg.norm(position) - earth_radius
+        rounded_height = np.round(height, decimals=-precision)
+        rounded_height = rounded_height if rounded_height >= start else rounded_height + 10**precision
+        try:
+            rho = samples[rounded_height]
+        except KeyError:
+            raise Exception(f"Height {height} is not supported by the COESA76-fast atmosphere model!")
+        return rho
+    
+    return density, model_kwargs
