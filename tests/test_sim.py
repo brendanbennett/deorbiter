@@ -1,7 +1,7 @@
 import pytest
 
 from src.data_models.sim import SimConfig
-from src.simulator.atmos import simple_atmos
+from src.simulator.atmos import SimpleAtmos
 from src.simulator.simulator import Simulator, get_available_atmos_models
 from src.utils.constants import AIR_DENSITY_SEA_LEVEL, EARTH_RADIUS
 
@@ -10,10 +10,9 @@ def test_simple_atmos():
     state = (200, 0, -3, 20)
     time = 0.1
     model_kwargs = {"earth_radius": 200, "surf_density": 1}
-    density_func, returned_model_kwargs = simple_atmos(
-        earth_radius=200, surf_density=1
-    )
-    density = density_func(state=state, time=time)
+    simple_atmos_model = SimpleAtmos(earth_radius=200, surf_density=1)
+    returned_model_kwargs = simple_atmos_model.model_kwargs()
+    density = simple_atmos_model.density(state=state, time=time)
     assert density == 1
     assert model_kwargs == returned_model_kwargs
 
@@ -21,8 +20,9 @@ def test_simple_atmos():
 def test_simple_atmos_defaults():
     state = (EARTH_RADIUS, 0, -3, 20)
     time = 0.1
-    density_func, returned_model_kwargs = simple_atmos()
-    density = density_func(state=state, time=time)
+    simple_atmos_model = SimpleAtmos()
+    returned_model_kwargs = simple_atmos_model.model_kwargs()
+    density = simple_atmos_model.density(state=state, time=time)
     assert density == AIR_DENSITY_SEA_LEVEL
     assert set(returned_model_kwargs.values()) == set(
         [EARTH_RADIUS, AIR_DENSITY_SEA_LEVEL]

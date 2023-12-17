@@ -1,110 +1,160 @@
+from abc import ABC, abstractmethod
+from contextlib import redirect_stdout
+from io import StringIO
 from typing import Callable
 
 import numpy as np
-from ambiance import Atmosphere as IcaoAtmosphere
-from pyatmos import coesa76 as _coesa76
+from ambiance import Atmosphere as _IcaoAtmosphere
+
+# Supress random stdout messages from this import
+with redirect_stdout(StringIO()):
+    from pyatmos import coesa76 as _coesa76
 
 from src.utils.constants import AIR_DENSITY_SEA_LEVEL, EARTH_RADIUS
 
 
-# Marks atmosphere model factory functions
-def atmosphere_model(func):
-    func.__atmos__ = True
-    return func
+class AtmosphereModel(ABC):
+    """Abstract base class for Atmosphere model implementations.
+    Attributes:
+        name: abstract; must be set as a class variable in any subclass
 
-# TODO Make easier to use by expanding decorator function above.
-# For now, in order to implement new density models, follow this layout. 
-# To change keyword arguments simple change them in the outer function.
-# Any additional constants should be assigned in src.utils.constants and imported
-@atmosphere_model
-def simple_atmos(
-    earth_radius: float = EARTH_RADIUS,
-    surf_density: float = AIR_DENSITY_SEA_LEVEL,
-) -> Callable:
+    Methods:
+        density(state, time) -> float: abstract; must be implemented in any subclass
+        model_kwargs() -> dict: returns a dictionary of model parameters
+    """
+
+    @property
+    @abstractmethod
+    def name(self):
+        ...
+
+    @abstractmethod
+    def density(self, state: np.ndarray, time: float) -> float:
+        ...
+
+    def model_kwargs(self) -> dict:
+        kwargs = self.__dict__
+        # Filter out private variables
+        # Private variables marked with '_' are not included in the model_kwargs dictionary.
+        # There should be an equal number of keyword arguments to __init__() as there
+        # are non-private instance variables
+        return {key: kwargs[key] for key in kwargs if key[0] != "_"}
+
+
+class SimpleAtmos(AtmosphereModel):
     """Generate simple atmospheric model
 
-    Args:
+    Attributes:
         earth_radius (float, optional): Earth's radius in metres. Defaults to EARTH_RADIUS.
         surf_density (float, optional): Air density at Earth's surface in kgm^-3. Defaults to AIR_DENSITY_SEA_LEVEL.
 
-    Returns:
-        density (Callable): Density function taking state and time as input
-        model_kwargs (dict): Model parameters
+    Methods:
+        density(state: np.ndarray, time: float) -> float: Density function taking state and time as input
+        model_kwargs() -> dict: Returns model parameters
     """
-    # Document the keywords used in the atmosphere model. This is required.
-    model_kwargs: dict = locals()
+
+    name = "simple_atmos"
+
+    def __init__(
+        self,
+        earth_radius: float = EARTH_RADIUS,
+        surf_density: float = AIR_DENSITY_SEA_LEVEL,
+    ) -> None:
+        """
+        Args:
+            earth_radius (float, optional): Earth's radius in metres. Defaults to EARTH_RADIUS.
+            surf_density (float, optional): Air density at Earth's surface in kgm^-3. Defaults to AIR_DENSITY_SEA_LEVEL.
+        """
+        # Document the keywords used in the atmosphere model. This is required.
+        self.earth_radius = earth_radius
+        self.surf_density = surf_density
 
     ## This function can be changed.
-    def density(state, time):
-        assert len(state) % 2 == 0
+    def density(self, state: np.ndarray, time: float) -> float:
         dim = int(len(state) / 2)
 
-        return surf_density * np.exp(
-            (-(np.linalg.norm(state[:dim]) / earth_radius) + 1)
+        return self.surf_density * np.exp(
+            (-(np.linalg.norm(state[:dim]) / self.earth_radius) + 1)
         )
 
-    # Returning a tuple of (density function, model keyword argments) is required too.
-    return density, model_kwargs
 
-@atmosphere_model
-def icao_standard_atmos(earth_radius: float = EARTH_RADIUS):
-    model_kwargs: dict = locals()
-    
-    max_height = 81020
-    density_at_max_height = IcaoAtmosphere(max_height).density
-    def density(state: np.ndarray, time: float):
-        assert len(state) % 2 == 0
+class IcaoAtmos(AtmosphereModel):
+    name = "icao_standard_atmos"
+
+    def __init__(self, earth_radius: float = EARTH_RADIUS):
+        self.earth_radius = earth_radius
+        self._max_height = 81020
+        self._density_at_max_height = _IcaoAtmosphere(self._max_height).density
+
+    def density(self, state: np.ndarray, time: float) -> float:
         dim = int(len(state) / 2)
         position = state[:dim]
-        
-        height = np.linalg.norm(position) - earth_radius
-        if height <= max_height:
-            return IcaoAtmosphere(height).density
+
+        height = np.linalg.norm(position) - self.earth_radius
+        if height <= self._max_height:
+            return _IcaoAtmosphere(height).density
         else:
             # TODO make better high altitude approx
-            return density_at_max_height * np.exp(height-max_height)
-    
-    return density, model_kwargs
+            return self._density_at_max_height * np.exp(
+                height - self._max_height
+            )
 
-@atmosphere_model
-def coesa_atmos(earth_radius: float = EARTH_RADIUS):
-    model_kwargs: dict = locals()
-    
-    def density(state: np.ndarray, time: float):
-        assert len(state) % 2 == 0
+
+class CoesaAtmos(AtmosphereModel):
+    name = "coesa_atmos"
+
+    def __init__(self, earth_radius: float = EARTH_RADIUS):
+        self.earth_radius = earth_radius
+
+    def density(self, state: np.ndarray, time: float) -> float:
         dim = int(len(state) / 2)
         position = state[:dim]
-        
-        height = np.linalg.norm(position) - earth_radius
-        height_in_km = height*1e-3
+
+        height = np.linalg.norm(position) - self.earth_radius
+        height_in_km = height * 1e-3
         return _coesa76(height_in_km).rho
-    
-    return density, model_kwargs
 
-@atmosphere_model
-def coesa_atmos_fast(earth_radius: float = EARTH_RADIUS, precision: int = 2):
-    """Uses a lookup table of atmosphere densities """
-    model_kwargs: dict = locals()
-    
-    start, end = -611, 1000000
-    rounded_start = np.round(start, decimals=-precision)
-    start = rounded_start if rounded_start >= start else rounded_start + 10**precision
-    sample_heights = np.arange(start, end+1, step=10**precision)
-    sampled_densities = _coesa76(sample_heights*1e-3).rho
-    samples = dict(zip(sample_heights, sampled_densities))
-    
-    def density(state: np.ndarray, time: float):
-        assert len(state) % 2 == 0
+
+class CoesaAtmosFast(AtmosphereModel):
+    """Uses a lookup table of atmosphere densities"""
+
+    name = "coesa_atmos_fast"
+
+    def __init__(self, earth_radius: float = EARTH_RADIUS, precision: int = 2):
+        assert (
+            precision >= 0 and int(precision) == precision
+        ), "Precision must be a non-negative integer"
+        self.earth_radius = earth_radius
+        self.precision = precision
+
+        start, end = -611, 1000000
+        rounded_start = np.round(start, decimals=-precision)
+        self._start = (
+            rounded_start
+            if rounded_start >= start
+            else rounded_start + 10**precision
+        )
+        sample_heights = np.arange(
+            self._start, end + 1, step=10**precision, dtype=np.float64
+        )
+        sampled_densities = _coesa76(sample_heights * 1e-3).rho
+        self._samples = dict(zip(sample_heights, sampled_densities))
+
+    def density(self, state: np.ndarray, time: float) -> float:
         dim = int(len(state) / 2)
         position = state[:dim]
-        
-        height = np.linalg.norm(position) - earth_radius
-        rounded_height = np.round(height, decimals=-precision)
-        rounded_height = rounded_height if rounded_height >= start else rounded_height + 10**precision
+
+        height = np.linalg.norm(position) - self.earth_radius
+        rounded_height = np.round(height, decimals=-self.precision)
+        rounded_height = (
+            rounded_height
+            if rounded_height >= self._start
+            else rounded_height + 10**self.precision
+        )
         try:
-            rho = samples[rounded_height]
+            rho = self._samples[rounded_height]
         except KeyError:
-            raise Exception(f"Height {height} is not supported by the COESA76-fast atmosphere model!")
+            raise Exception(
+                f"Height {height} is not supported by the COESA76-fast atmosphere model!"
+            )
         return rho
-    
-    return density, model_kwargs
