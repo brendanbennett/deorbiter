@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import src.simulator.atmos as atmos
-from src.simulator.atmos import AtmosphereModel
 from src.data_models import SimConfig, SimData
+from src.simulator.atmos import AtmosphereModel
 from src.utils.constants import (
     EARTH_RADIUS,
     GM_EARTH,
@@ -108,7 +108,9 @@ class Simulator:
         models = get_available_atmos_models()
         if model_string in models:
             model_class = models[model_string]
-            self._atmosphere_model: AtmosphereModel = model_class(**model_kwargs)
+            self._atmosphere_model: AtmosphereModel = model_class(
+                **model_kwargs
+            )
             model_kwargs = self._atmosphere_model.model_kwargs()
             self.config.atmosphere_model = model_string
             self.config.atmosphere_model_kwargs = model_kwargs
@@ -409,7 +411,7 @@ if __name__ == "__main__":
         0.0,
     )
 
-    sim.run(1000000)
+    sim.run(100000)
     fig, ax = plt.subplots()
     ax.plot(sim.x1, sim.x2)
     earth = plt.Circle((0, 0), radius=EARTH_RADIUS, fill=False)

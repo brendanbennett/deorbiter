@@ -1,9 +1,14 @@
-from typing import Callable
 from abc import ABC, abstractmethod
+from contextlib import redirect_stdout
+from io import StringIO
+from typing import Callable
 
 import numpy as np
 from ambiance import Atmosphere as _IcaoAtmosphere
-from pyatmos import coesa76 as _coesa76
+
+# Supress random stdout messages from this import
+with redirect_stdout(StringIO()):
+    from pyatmos import coesa76 as _coesa76
 
 from src.utils.constants import AIR_DENSITY_SEA_LEVEL, EARTH_RADIUS
 
@@ -47,6 +52,7 @@ class SimpleAtmos(AtmosphereModel):
         density(state: np.ndarray, time: float) -> float: Density function taking state and time as input
         model_kwargs() -> dict: Returns model parameters
     """
+
     name = "simple_atmos"
 
     def __init__(
@@ -111,9 +117,13 @@ class CoesaAtmos(AtmosphereModel):
 
 class CoesaAtmosFast(AtmosphereModel):
     """Uses a lookup table of atmosphere densities"""
+
     name = "coesa_atmos_fast"
 
     def __init__(self, earth_radius: float = EARTH_RADIUS, precision: int = 2):
+        assert (
+            precision >= 0 and int(precision) == precision
+        ), "Precision must be a non-negative integer"
         self.earth_radius = earth_radius
         self.precision = precision
 
@@ -124,7 +134,9 @@ class CoesaAtmosFast(AtmosphereModel):
             if rounded_start >= start
             else rounded_start + 10**precision
         )
-        sample_heights = np.arange(start, end + 1, step=10**precision)
+        sample_heights = np.arange(
+            self._start, end + 1, step=10**precision, dtype=np.float64
+        )
         sampled_densities = _coesa76(sample_heights * 1e-3).rho
         self._samples = dict(zip(sample_heights, sampled_densities))
 
