@@ -1,4 +1,4 @@
-from inspect import getmembers, isfunction
+from inspect import getmembers, isclass
 from time import thread_time_ns
 from typing import Callable
 
@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import src.simulator.atmos as atmos
+from src.simulator.atmos import AtmosphereModel
 from src.data_models import SimConfig, SimData
 from src.utils.constants import (
     EARTH_RADIUS,
@@ -106,8 +107,9 @@ class Simulator:
     ) -> None:
         models = get_available_atmos_models()
         if model_string in models:
-            model_factory: Callable = models[model_string]
-            self._atmosphere_model, model_kwargs = model_factory(**model_kwargs)
+            model_class = models[model_string]
+            self._atmosphere_model: AtmosphereModel = model_class(**model_kwargs)
+            model_kwargs = self._atmosphere_model.model_kwargs()
             self.config.atmosphere_model = model_string
             self.config.atmosphere_model_kwargs = model_kwargs
         else:
@@ -130,14 +132,14 @@ class Simulator:
         return state[self.dim :]
 
     def atmosphere(self, state: np.ndarray, time: float) -> float:
-        return self._atmosphere_model(state, time)
+        return self._atmosphere_model.density(state, time)
 
     def _gravity_accel(self, state: np.ndarray) -> np.ndarray:
         """Calculate acceleration by gravity.
-        
+
         Args:
             state: (np.ndarray)
-            
+
         Returns:
             np.ndarray: Acceleration by gravity vector
         """
@@ -359,19 +361,19 @@ def get_available_atmos_models() -> dict[str:Callable]:
     """Find available atmosphere models in atmos.py
 
     Returns:
-        dict[str, Callable]: Dictionary of model name keys and function values
+        dict[str, subclass(AtmosphereModel)]: Dictionary of {model name: subclass of AtmosphereModel}
     """
-    full_list = getmembers(atmos, isfunction)
+    full_list = getmembers(atmos, isclass)
     # Atmosphere function factories have the __atmos__ attribute set to True.
     # This is so this function doesn't get confused with other functions defined
     # in atmos. This can be avoided by defining these functions with an _underscore
     # at the beginning but this check makes this unnecessary.
     full_list = [
-        func
-        for func in full_list
-        if hasattr(func[1], "__atmos__") and func[1].__atmos__ == True
+        cls
+        for cls in full_list
+        if issubclass(cls[1], AtmosphereModel) and cls[1] != AtmosphereModel
     ]
-    return {i[0]: i[1] for i in full_list}
+    return {i[1].name: i[1] for i in full_list}
 
 
 def get_available_sim_methods() -> dict[str, str]:
@@ -401,7 +403,9 @@ if __name__ == "__main__":
     )
     # Initial conditions
     sim.set_initial_conditions(
-        np.array([EARTH_RADIUS + 185000, 0, 0, 8000], dtype=np.dtype("float64")),
+        np.array(
+            [EARTH_RADIUS + 185000, 0, 0, 8000], dtype=np.dtype("float64")
+        ),
         0.0,
     )
 
