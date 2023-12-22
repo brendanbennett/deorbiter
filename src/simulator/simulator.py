@@ -1,6 +1,7 @@
 from inspect import getmembers, isfunction
 from time import thread_time_ns
 from typing import Callable
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -346,13 +347,15 @@ class Simulator:
             raise Exception("Sim dimension is not 2 or 3!")
         return data
 
-    def save_data(self, path: str) -> None:
-        """Saves simulation data to [path] as defined in the SimData data model.
+    def save_data(self, save_dir_path: str) -> Path:
+        """Saves simulation data to [save_dir_path] directory as defined in the SimData data model.
+        
+        File name format: sim_data_[unix time in ms].json
 
         Args:
-            path (str): Path to save json data file
+            save_dir_path (Path like): Data directory to save json file.
         """
-        save_sim_data(self.gather_data(), path=path)
+        save_sim_data(self.gather_data(), dir_path_string=save_dir_path)
 
 
 def get_available_atmos_models() -> dict[str:Callable]:
@@ -405,13 +408,13 @@ if __name__ == "__main__":
         0.0,
     )
 
-    sim.run(1000000)
+    sim.run(10000)
     fig, ax = plt.subplots()
     ax.plot(sim.x1, sim.x2)
     earth = plt.Circle((0, 0), radius=EARTH_RADIUS, fill=False)
     ax.add_patch(earth)
     # ax.set_xlim([5e6, 6.5e6])
     # ax.set_ylim([-2e5, 4e6])
-    plt.show()
+    # plt.show()
 
-    sim.save_data("sim_data.json")
+    sim.save_data("../mir_data/")
