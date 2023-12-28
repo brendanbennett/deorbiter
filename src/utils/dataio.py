@@ -1,6 +1,6 @@
 import json
 import os
-from time import time
+from datetime import datetime
 from pathlib import Path
 
 from src.data_models import SimData
@@ -41,13 +41,14 @@ def save_sim_data(data: SimData, dir_path_string: str) -> Path:
 
 
 def _get_filename(stem: str) -> str:
-    """Generates filenames in the format [stem]_[unix time in ms]
+    """Generates filenames in the format [stem]_yyyymmdd_hhmmss
 
     Returns:
         str: filename
     """
     # time() give floating point unix time.
-    timestamp = str(int(1000*time()))
+    t = datetime.utcnow().timetuple()
+    timestamp = f"{t[0]:0>4d}{t[1]:0>2d}{t[2]:0>2d}_{t[3]:0>2d}{t[4]:0>2d}{t[5]:0>2d}"
     return stem + "_" + timestamp
 
 
