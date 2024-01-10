@@ -10,7 +10,7 @@ from ambiance import Atmosphere as _IcaoAtmosphere
 with redirect_stdout(StringIO()):
     from pyatmos import coesa76 as _coesa76
 
-from src.utils.constants import AIR_DENSITY_SEA_LEVEL, EARTH_RADIUS
+from deorbit.utils.constants import AIR_DENSITY_SEA_LEVEL, EARTH_RADIUS
 
 
 class AtmosphereModel(ABC):

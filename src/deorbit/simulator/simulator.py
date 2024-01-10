@@ -6,17 +6,17 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-import src.simulator.atmos as atmos
-from src.data_models import SimConfig, SimData
-from src.simulator.atmos import AtmosphereModel
-from src.utils.constants import (
+import deorbit.simulator.atmos as atmos
+from deorbit.data_models import SimConfig, SimData
+from deorbit.simulator.atmos import AtmosphereModel
+from deorbit.utils.constants import (
     EARTH_RADIUS,
     GM_EARTH,
     MEAN_DRAG_COEFF,
     MEAN_XSECTIONAL_AREA,
     SATELLITE_MASS,
 )
-from src.utils.dataio import save_sim_data
+from deorbit.utils.dataio import save_sim_data
 
 
 def sim_method(name: str) -> Callable:
@@ -397,7 +397,7 @@ def get_available_sim_methods() -> dict[str, str]:
 
 if __name__ == "__main__":
     # Run me with
-    # mir-orbiter$ python -m src.simulator.simulator
+    # mir-orbiter$ python -m deorbit.simulator.simulator
 
     sim = Simulator(
         SimConfig(
