@@ -1,9 +1,9 @@
 import pytest
 
-from src.data_models.sim import SimConfig
-from src.simulator.atmos import SimpleAtmos
-from src.simulator.simulator import Simulator, get_available_atmos_models
-from src.utils.constants import AIR_DENSITY_SEA_LEVEL, EARTH_RADIUS
+from src.deorbit.data_models.sim import SimConfig
+from src.deorbit.simulator.atmos import SimpleAtmos
+from src.deorbit.simulator.simulator import Simulator, get_available_atmos_models
+from src.deorbit.utils.constants import AIR_DENSITY_SEA_LEVEL, EARTH_RADIUS
 
 
 def test_simple_atmos():
