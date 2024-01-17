@@ -6,10 +6,6 @@ from typing import Callable
 import numpy as np
 from ambiance import Atmosphere as _IcaoAtmosphere
 
-# Supress random stdout messages from this import
-with redirect_stdout(StringIO()):
-    from pyatmos import coesa76 as _coesa76
-
 from deorbit.utils.constants import AIR_DENSITY_SEA_LEVEL, EARTH_RADIUS
 
 
@@ -101,10 +97,16 @@ class IcaoAtmos(AtmosphereModel):
 
 
 class CoesaAtmos(AtmosphereModel):
-    # TODO Add lazy import of coesa76
     name = "coesa_atmos"
 
     def __init__(self, earth_radius: float = EARTH_RADIUS):
+        # Lazy import of coesa76
+        if "_coesa76" not in dir():
+            global _coesa76
+            # Supress random stdout messages from this import
+            with redirect_stdout(StringIO()):
+                from pyatmos import coesa76 as _coesa76
+            
         self.earth_radius = earth_radius
 
     def density(self, state: np.ndarray, time: float) -> float:
@@ -125,6 +127,13 @@ class CoesaAtmosFast(AtmosphereModel):
         assert (
             precision >= 0 and int(precision) == precision
         ), "Precision must be a non-negative integer"
+        
+        # Lazy import of coesa76
+        if "_coesa76" not in dir():
+            global _coesa76
+            with redirect_stdout(StringIO()):
+                from pyatmos import coesa76 as _coesa76
+        
         self.earth_radius = earth_radius
         self.precision = precision
 
