@@ -101,6 +101,7 @@ class IcaoAtmos(AtmosphereModel):
 
 
 class CoesaAtmos(AtmosphereModel):
+    # TODO Add lazy import of coesa76
     name = "coesa_atmos"
 
     def __init__(self, earth_radius: float = EARTH_RADIUS):
