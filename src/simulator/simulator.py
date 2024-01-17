@@ -210,13 +210,13 @@ class Simulator:
         del buffer[0]
         self.states.append(next_state)
 
-    def step_state_RK4(self) -> None:
+    def _step_state_RK4(self) -> None:
         self._step_time()
         next_state = np.array(self.states[-1])
-        k1 = self.objective_function(self.states[-1], self.times[-1])
-        k2 = self.objective_function((self.states[-1] + (self.time_step*k1)/2), (self.times[-1] + self.time_step/2))
-        k3 = self.objective_function((self.states[-1] + (self.time_step*k2)/2),  (self.times[-1] + self.time_step/2))
-        k4 = self.objective_function((self.states[-1] + self.time_step*k3), (self.times[-1] + self.time_step))
+        k1 = self._objective_function(self.states[-1], self.times[-1])
+        k2 = self._objective_function((self.states[-1] + (self.time_step*k1)/2), (self.times[-1] + self.time_step/2))
+        k3 = self._objective_function((self.states[-1] + (self.time_step*k2)/2),  (self.times[-1] + self.time_step/2))
+        k4 = self._objective_function((self.states[-1] + self.time_step*k3), (self.times[-1] + self.time_step))
         next_state += (
             self.time_step * (k1+k2+k3+k4)
         )
@@ -437,7 +437,7 @@ if __name__ == "__main__":
         SimConfig(
             time_step=0.1,
             atmosphere_model="coesa_atmos_fast",
-            simulation_method="adams_bashforth",
+            simulation_method="RK4",
         )
     )
     # Initial conditions
