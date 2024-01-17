@@ -3,7 +3,6 @@ from pathlib import Path
 from time import thread_time_ns
 from typing import Callable
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 import deorbit.simulator.atmos as atmos
