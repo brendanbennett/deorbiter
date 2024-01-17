@@ -396,31 +396,5 @@ def get_available_sim_methods() -> dict[str, str]:
 
 
 if __name__ == "__main__":
-    # Run me with
-    # mir-orbiter$ python -m deorbit.simulator.simulator
-
-    sim = Simulator(
-        SimConfig(
-            time_step=0.1,
-            atmosphere_model="coesa_atmos_fast",
-            simulation_method="adams_bashforth",
-        )
-    )
-    # Initial conditions
-    sim.set_initial_conditions(
-        np.array(
-            [EARTH_RADIUS + 185000, 0, 0, 8000], dtype=np.dtype("float64")
-        ),
-        0.0,
-    )
-
-    sim.run(100000)
-    fig, ax = plt.subplots()
-    ax.plot(sim.x1, sim.x2)
-    earth = plt.Circle((0, 0), radius=EARTH_RADIUS, fill=False)
-    ax.add_patch(earth)
-    # ax.set_xlim([5e6, 6.5e6])
-    # ax.set_ylim([-2e5, 4e6])
-    # plt.show()
-
-    sim.save_data("../mir_data/")
+    # TODO implement CLI
+    pass
