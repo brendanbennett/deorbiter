@@ -1,7 +1,7 @@
 from inspect import getmembers, isclass
+from pathlib import Path
 from time import thread_time_ns
 from typing import Callable
-from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,13 +9,8 @@ import numpy as np
 import deorbit.simulator.atmos as atmos
 from deorbit.data_models import SimConfig, SimData
 from deorbit.simulator.atmos import AtmosphereModel
-from deorbit.utils.constants import (
-    EARTH_RADIUS,
-    GM_EARTH,
-    MEAN_DRAG_COEFF,
-    MEAN_XSECTIONAL_AREA,
-    SATELLITE_MASS,
-)
+from deorbit.utils.constants import (EARTH_RADIUS, GM_EARTH, MEAN_DRAG_COEFF,
+                                     MEAN_XSECTIONAL_AREA, SATELLITE_MASS)
 from deorbit.utils.dataio import save_sim_data
 
 
