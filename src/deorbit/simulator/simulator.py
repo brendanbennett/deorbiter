@@ -95,7 +95,7 @@ class Simulator:
     def set_initial_conditions(self, state: np.ndarray, time: float):
         """Resets the simulation and initialises values with the given state vector and time"""
         # Makes sure state is a numpy array
-        state = np.array(state)
+        state = np.array(state, dtype=float)
         assert state.shape == (
             2 * self.dim,
         ), f"Incorrect shape for initial state {state}. Expected {(2*self.dim,)}, got {state.shape}"
@@ -189,7 +189,7 @@ class Simulator:
 
     def _step_state_euler(self) -> None:
         self._step_time()
-        next_state = np.array(self.states[-1])
+        next_state = np.array(self.states[-1], dtype=float)
         next_state += (
             self._objective_function(self.states[-1], self.times[-1])
             * self.time_step
