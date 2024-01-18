@@ -164,6 +164,6 @@ class CoesaAtmosFast(AtmosphereModel):
             rho = self._samples[rounded_height]
         except KeyError:
             raise Exception(
-                f"Height {height} is not supported by the COESA76-fast atmosphere model!"
+                f"Height {height}m at time {time} is not supported by the COESA76-fast atmosphere model!"
             )
         return rho

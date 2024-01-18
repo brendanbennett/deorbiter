@@ -204,6 +204,25 @@ class Simulator:
         del buffer[0]
         self.states.append(next_state)
 
+    def _step_state_RK4(self) -> None:
+        self._step_time()
+        next_state = np.array(self.states[-1])
+        k1 = self._objective_function(self.states[-1], self.times[-1])
+        k2 = self._objective_function((self.states[-1] + (self.time_step*k1)/2), (self.times[-1] + self.time_step/2))
+        k3 = self._objective_function((self.states[-1] + (self.time_step*k2)/2),  (self.times[-1] + self.time_step/2))
+        k4 = self._objective_function((self.states[-1] + self.time_step*k3), (self.times[-1] + self.time_step))
+        next_state += (
+            self.time_step * (1/6)*(k1+2*k2+2*k3+k4)
+        )
+        self.states.append(next_state)
+
+    # def step_state_Implicit_Trapz(self) -> None:
+    #     self._step_time()
+    #     next_state = np.array(self.states[-1])
+    #     #will be able to do this when understand code better
+        
+        
+
     def is_terminal(self, state: np.ndarray) -> bool:
         return np.linalg.norm(self._pos_from_state(state)) <= EARTH_RADIUS
 
@@ -247,6 +266,21 @@ class Simulator:
             if steps is not None and iters >= steps:
                 break
             self._step_state_adams_bashforth(function_buffer)
+            iters += 1
+
+        print(
+            f"Ran {iters} iterations at time step of {self.time_step} seconds"
+        )
+
+    @sim_method("RK4")
+    def _run_RK4(self, steps: int | None) -> None:
+        """4th order Runge Kutta Numerical Integration Method"""
+        print("Running simulation with RK4 integrator")
+        iters = 0
+        while not self.is_terminal(self.states[-1]):
+            if steps is not None and iters >= steps:
+                break
+            self._step_state_RK4()
             iters += 1
 
         print(
