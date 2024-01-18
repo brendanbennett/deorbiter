@@ -17,5 +17,3 @@ An end user might use the following command to install this package into their c
 ```
 python -m pip install git+https://github.com/ES98B-Mir-project-23/mir-orbiter.git@main#egg=mir-satellite-deorbiter
 ```
-
-If a meson error thrown saying `ERROR: Dependency lookup for BLAS with method 'pkgconfig' failed: Pkg-config for machine host machine not found. Giving up.` you may need to install all the requirements first...
