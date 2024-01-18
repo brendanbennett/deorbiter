@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mir-satellite-deorbiter"
+authors = [
+    { name = "Shuheng Bao", email = "shuheng.bao@warwick.ac.uk" },
+    { name = "Brendan Bennett", email = "brendan.bennett@warwick.ac.uk" },
+    { name = "Patrick Courts", email = "patrick.courts@warwick.ac.uk" },
+    { name = "Angelo Desouza", email = "angelo.desouza@warwick.ac.uk" },
+    { name = "Enqi Jing", email = "enqi.jing@warwick.ac.uk" },
+    { name = "Jimmy Medici-Wainwright", email = "jimmy.medici-wainwright@warwick.ac.uk" },
+]
+description = "Satellite deorbit simulation and prediction"
+requires-python = ">=3.10"
+dynamic = ["version", "readme"]
+dependencies = [
+    "pyshtools==4.10.4", # pyshtools (required by pyatmos) version 4.11.7 doesn't have binary installers and needs to be built.
+    "ambiance",
+    "matplotlib",
+    "numpy",
+    "pyatmos",
+    "pydantic",
+    "scipy",
+]
+
+[tool.setuptools.dynamic]
+readme = { file = ["README.md"], content-type = "text/markdown" }
+version = { attr = "deorbit.__version__" }
+
+[project.optional-dependencies]
+dev = ["pytest", "isort"]

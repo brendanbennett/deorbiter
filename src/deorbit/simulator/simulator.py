@@ -1,22 +1,16 @@
 from inspect import getmembers, isclass
+from pathlib import Path
 from time import thread_time_ns
 from typing import Callable
-from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
 
-import src.simulator.atmos as atmos
-from src.data_models import SimConfig, SimData
-from src.simulator.atmos import AtmosphereModel
-from src.utils.constants import (
-    EARTH_RADIUS,
-    GM_EARTH,
-    MEAN_DRAG_COEFF,
-    MEAN_XSECTIONAL_AREA,
-    SATELLITE_MASS,
-)
-from src.utils.dataio import save_sim_data
+import deorbit.simulator.atmos as atmos
+from deorbit.data_models import SimConfig, SimData
+from deorbit.simulator.atmos import AtmosphereModel
+from deorbit.utils.constants import (EARTH_RADIUS, GM_EARTH, MEAN_DRAG_COEFF,
+                                     MEAN_XSECTIONAL_AREA, SATELLITE_MASS)
+from deorbit.utils.dataio import save_sim_data
 
 
 def sim_method(name: str) -> Callable:
@@ -95,7 +89,7 @@ class Simulator:
     def set_initial_conditions(self, state: np.ndarray, time: float):
         """Resets the simulation and initialises values with the given state vector and time"""
         # Makes sure state is a numpy array
-        state = np.array(state)
+        state = np.array(state, dtype=float)
         assert state.shape == (
             2 * self.dim,
         ), f"Incorrect shape for initial state {state}. Expected {(2*self.dim,)}, got {state.shape}"
@@ -189,7 +183,7 @@ class Simulator:
 
     def _step_state_euler(self) -> None:
         self._step_time()
-        next_state = np.array(self.states[-1])
+        next_state = np.array(self.states[-1], dtype=float)
         next_state += (
             self._objective_function(self.states[-1], self.times[-1])
             * self.time_step
@@ -430,31 +424,5 @@ def get_available_sim_methods() -> dict[str, str]:
 
 
 if __name__ == "__main__":
-    # Run me with
-    # mir-orbiter$ python -m src.simulator.simulator
-
-    sim = Simulator(
-        SimConfig(
-            time_step=0.1,
-            atmosphere_model="coesa_atmos_fast",
-            simulation_method="RK4",
-        )
-    )
-    # Initial conditions
-    sim.set_initial_conditions(
-        np.array(
-            [EARTH_RADIUS + 185000, 0, 0, 8000], dtype=np.dtype("float64")
-        ),
-        0.0,
-    )
-
-    sim.run(10000)
-    fig, ax = plt.subplots()
-    ax.plot(sim.x1, sim.x2)
-    earth = plt.Circle((0, 0), radius=EARTH_RADIUS, fill=False)
-    ax.add_patch(earth)
-    # ax.set_xlim([5e6, 6.5e6])
-    # ax.set_ylim([-2e5, 4e6])
-    # plt.show()
-
-    sim.save_data("../mir_data/")
+    # TODO implement CLI
+    pass
