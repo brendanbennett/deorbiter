@@ -2,11 +2,20 @@
 
 ## Setup
 
-This project requires `Python>=3.10`. We recommend creating a new conda environment with a suitable version of Python.
-Then, in the activated environment, run
+This package requires `Python>=3.10`.
+
+For development purposes, you can install this package - after cloning to a local directory and navigating into the repository - with the command
 
 ```
-pip install -r requirements.txt
+python -m pip install -e .
 ```
 
-to install the required packages.
+This will install the package interactively, allowing the package to be modified and changes to be applied immediately in the local environment.
+
+An end user might use the following command to install this package into their current environment:
+
+```
+python -m pip install git+https://github.com/ES98B-Mir-project-23/mir-orbiter.git@main#egg=mir-satellite-deorbiter
+```
+
+If a meson error thrown saying `ERROR: Dependency lookup for BLAS with method 'pkgconfig' failed: Pkg-config for machine host machine not found. Giving up.` you may need to install all the requirements first...
