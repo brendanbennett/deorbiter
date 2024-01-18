@@ -218,14 +218,14 @@ class Simulator:
         k3 = self._objective_function((self.states[-1] + (self.time_step*k2)/2),  (self.times[-1] + self.time_step/2))
         k4 = self._objective_function((self.states[-1] + self.time_step*k3), (self.times[-1] + self.time_step))
         next_state += (
-            self.time_step * (k1+k2+k3+k4)
+            self.time_step * (1/6)*(k1+2*k2+2*k3+k4)
         )
         self.states.append(next_state)
 
-    def step_state_Implicit_Trapz(self) -> None:
-        self._step_time()
-        next_state = np.array(self.states[-1])
-        #will be able to do this when understand code better
+    # def step_state_Implicit_Trapz(self) -> None:
+    #     self._step_time()
+    #     next_state = np.array(self.states[-1])
+    #     #will be able to do this when understand code better
         
         
 
@@ -448,7 +448,7 @@ if __name__ == "__main__":
         0.0,
     )
 
-    sim.run(100000)
+    sim.run(10000)
     fig, ax = plt.subplots()
     ax.plot(sim.x1, sim.x2)
     earth = plt.Circle((0, 0), radius=EARTH_RADIUS, fill=False)
