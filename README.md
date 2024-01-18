@@ -20,4 +20,4 @@ python -m pip install git+https://github.com/ES98B-Mir-project-23/mir-orbiter.gi
 
 After either of the above, the package will be available as `deorbit` in the python environment.
 
-For usage examples see /examples/
+For usage examples see [examples/](examples)
