@@ -4,12 +4,18 @@ from time import thread_time_ns
 from typing import Callable
 
 import numpy as np
+from tqdm import tqdm
 
 import deorbit.simulator.atmos as atmos
 from deorbit.data_models import SimConfig, SimData
 from deorbit.simulator.atmos import AtmosphereModel
-from deorbit.utils.constants import (EARTH_RADIUS, GM_EARTH, MEAN_DRAG_COEFF,
-                                     MEAN_XSECTIONAL_AREA, SATELLITE_MASS)
+from deorbit.utils.constants import (
+    EARTH_RADIUS,
+    GM_EARTH,
+    MEAN_DRAG_COEFF,
+    MEAN_XSECTIONAL_AREA,
+    SATELLITE_MASS,
+)
 from deorbit.utils.dataio import save_sim_data
 
 
@@ -208,21 +214,26 @@ class Simulator:
         self._step_time()
         next_state = np.array(self.states[-1])
         k1 = self._objective_function(self.states[-1], self.times[-1])
-        k2 = self._objective_function((self.states[-1] + (self.time_step*k1)/2), (self.times[-1] + self.time_step/2))
-        k3 = self._objective_function((self.states[-1] + (self.time_step*k2)/2),  (self.times[-1] + self.time_step/2))
-        k4 = self._objective_function((self.states[-1] + self.time_step*k3), (self.times[-1] + self.time_step))
-        next_state += (
-            self.time_step * (1/6)*(k1+2*k2+2*k3+k4)
+        k2 = self._objective_function(
+            (self.states[-1] + (self.time_step * k1) / 2),
+            (self.times[-1] + self.time_step / 2),
         )
+        k3 = self._objective_function(
+            (self.states[-1] + (self.time_step * k2) / 2),
+            (self.times[-1] + self.time_step / 2),
+        )
+        k4 = self._objective_function(
+            (self.states[-1] + self.time_step * k3),
+            (self.times[-1] + self.time_step),
+        )
+        next_state += self.time_step * (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
         self.states.append(next_state)
 
     # def step_state_Implicit_Trapz(self) -> None:
     #     self._step_time()
     #     next_state = np.array(self.states[-1])
     #     #will be able to do this when understand code better
-        
-        
-
+              
     def is_terminal(self, state: np.ndarray) -> bool:
         return np.linalg.norm(self._pos_from_state(state)) <= EARTH_RADIUS
 
@@ -230,12 +241,20 @@ class Simulator:
     def _run_euler(self, steps: int | None) -> None:
         """Simple forward euler integration technique"""
         print("Running simulation with Euler integrator")
-        iters = 0
-        while not self.is_terminal(self.states[-1]):
-            if steps is not None and iters >= steps:
-                break
-            self._step_state_euler()
-            iters += 1
+        # Boilerplate code for stepping the simulation
+        if steps is None:
+            iters = 0
+            while not self.is_terminal(self.states[-1]):
+                self._step_state_euler()
+                iters += 1
+        else:
+            for i in tqdm(range(steps)):
+                if self.is_terminal(self.states[-1]):
+                    iters = i
+                    break
+                self._step_state_euler()
+            else:
+                iters = steps
 
         print(
             f"Ran {iters} iterations at time step of {self.time_step} seconds"
@@ -261,12 +280,20 @@ class Simulator:
         function_buffer.append(
             self._objective_function(self.states[-1], self.times[-1])
         )
-
-        while not self.is_terminal(self.states[-1]):
-            if steps is not None and iters >= steps:
-                break
-            self._step_state_adams_bashforth(function_buffer)
-            iters += 1
+        # Boilerplate code for stepping the simulation
+        if steps is None:
+            iters = 0
+            while not self.is_terminal(self.states[-1]):
+                self._step_state_adams_bashforth(function_buffer)
+                iters += 1
+        else:
+            for i in tqdm(range(steps)):
+                if self.is_terminal(self.states[-1]):
+                    iters = i
+                    break
+                self._step_state_adams_bashforth(function_buffer)
+            else:
+                iters = steps
 
         print(
             f"Ran {iters} iterations at time step of {self.time_step} seconds"
@@ -277,11 +304,20 @@ class Simulator:
         """4th order Runge Kutta Numerical Integration Method"""
         print("Running simulation with RK4 integrator")
         iters = 0
-        while not self.is_terminal(self.states[-1]):
-            if steps is not None and iters >= steps:
-                break
-            self._step_state_RK4()
-            iters += 1
+        # Boilerplate code for stepping the simulation
+        if steps is None:
+            iters = 0
+            while not self.is_terminal(self.states[-1]):
+                self._step_state_RK4()
+                iters += 1
+        else:
+            for i in tqdm(range(steps)):
+                if self.is_terminal(self.states[-1]):
+                    iters = i
+                    break
+                self._step_state_RK4()
+            else:
+                iters = steps
 
         print(
             f"Ran {iters} iterations at time step of {self.time_step} seconds"
@@ -381,7 +417,7 @@ class Simulator:
 
     def save_data(self, save_dir_path: str) -> Path:
         """Saves simulation data to [save_dir_path] directory as defined in the SimData data model.
-        
+
         File name format: sim_data_[unix time in ms].json
 
         Args:
