@@ -4,6 +4,7 @@ from io import StringIO
 from typing import Callable
 
 import numpy as np
+import matplotlib.pyplot as plt
 from ambiance import Atmosphere as _IcaoAtmosphere
 
 from deorbit.data_models.atmos import (
@@ -48,6 +49,16 @@ class AtmosphereModel(ABC):
 
     @abstractmethod
     def density(self, state: np.ndarray, time: float) -> float: ...
+
+    def visualize(
+        self, height_bounds_meters: tuple[float, float], num_points: int = 100
+    ) -> None:
+        fig, ax = plt.subplots()
+        heights = np.linspace(*height_bounds_meters, num_points)
+        state_samples = [(0, EARTH_RADIUS + h, 0, 0) for h in heights]
+        densities = [self.density(s, 0) for s in state_samples]
+        ax.plot(densities, heights)
+        plt.show()
 
 
 class SimpleAtmos(AtmosphereModel, model_name="simple_atmos"):
