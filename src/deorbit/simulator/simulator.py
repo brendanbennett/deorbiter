@@ -9,7 +9,7 @@ import deorbit.simulator.atmos as atmos
 from deorbit.data_models import SimConfig, SimData
 from deorbit.simulator.atmos import AtmosphereModel
 from deorbit.utils.constants import (EARTH_RADIUS, GM_EARTH, MEAN_DRAG_COEFF,
-                                     MEAN_XSECTIONAL_AREA, SATELLITE_MASS)
+                                     MEAN_XSECTIONAL_AREA, SATELLITE_MASS, MACHINE_PRECISION)
 from deorbit.utils.dataio import save_sim_data
 
 
@@ -216,12 +216,58 @@ class Simulator:
         )
         self.states.append(next_state)
 
-    # def step_state_Implicit_Trapz(self) -> None:
+    def _pseudo_RK4_step(self, state, time, h) -> float:
+        '''
+        I know this seems silly but is necessary for adaptive time stepping as dont want to append the state
+        would love input on if you think this is possible using the .stuff within the classes, but cuz they
+        are pseudo didnt want to actually change them
+        '''
+
+        k1 = self._objective_function(state, time)
+        k2 = self._objective_function((state + (h*k1)/2), (time+ h/2))
+        k3 = self._objective_function((state + (h*k2)/2),  (time + h/2))
+        k4 = self._objective_function((state + h*k3), (time + h))
+        
+        change = h * (1/6)*(k1+2*k2+2*k3+k4)
+        return change
+    
+    def _calculate_step_size(self, n, current_h, eps, delta):
+        return (((eps/delta)**(1/n))*current_h)*0.9
+
+
+    def _adaptive_step_state_RK4(self, current_time_step) -> float:
+        print(current_time_step)
+        self._step_time()
+        next_state = np.array(self.states[-1])
+
+        u_b = self.states[-1] + self._pseudo_RK4_step(self.states[-1], self.times[-1], current_time_step)
+        u_s_1 = self.states[-1] + self._pseudo_RK4_step(self.states[-1], self.times[-1], current_time_step/2)
+        print(f"us1: {u_s_1}")
+        u_s = u_s_1 + self._pseudo_RK4_step(u_s_1, self.times[-1]+(current_time_step/2), current_time_step/2)
+        print(f"us: {u_s}")
+        print(f"ub: {u_b}")
+        delta = np.abs(u_s - u_b)
+        print(f"delta: {delta}")
+            
+        #4th order method
+        current_time_step = self._calculate_step_size(4, current_time_step, MACHINE_PRECISION, delta)
+
+        next_state += self._pseudo_RK4_step(self.states[-1], self.times[-1], current_time_step)
+        self.states.append(next_state)
+        return current_time_step
+
+
+    # def _step_state_Implicit_Trapz(self) -> None:
+    #     #estimation using euler method, until know how to linearise equations/ use newton raphson
     #     self._step_time()
     #     next_state = np.array(self.states[-1])
-    #     #will be able to do this when understand code better
-        
-        
+    #     next_state += (
+    #         0.5*self.time_step*(self._objective_function(self.states[-1], self.times[-1]) +
+    #             (next_state + (self._objective_function(self.states[-1], self.times[-1])* self.time_step))
+    #         )
+    #     )
+    #     self.states.append(next_state)
+
 
     def is_terminal(self, state: np.ndarray) -> bool:
         return np.linalg.norm(self._pos_from_state(state)) <= EARTH_RADIUS
@@ -275,17 +321,45 @@ class Simulator:
     @sim_method("RK4")
     def _run_RK4(self, steps: int | None) -> None:
         """4th order Runge Kutta Numerical Integration Method"""
-        print("Running simulation with RK4 integrator")
-        iters = 0
-        while not self.is_terminal(self.states[-1]):
-            if steps is not None and iters >= steps:
-                break
-            self._step_state_RK4()
-            iters += 1
+        
+
+        if self.config.adaptive_time_stepping == True:
+            print("Running simulation with RK4 integrator and adaptive time stepping")
+            iters = 0
+            current_time_step = self.time_step
+            while not self.is_terminal(self.states[-1]):
+                if steps is not None and iters >= steps:
+                    break
+                current_time_step = self._adaptive_step_state_RK4(current_time_step)
+
+                iters += 1
+        else:
+            print("Running simulation with RK4 integrator")
+            iters = 0
+            while not self.is_terminal(self.states[-1]):
+                if steps is not None and iters >= steps:
+                    break
+                self._step_state_RK4()
+                iters += 1
 
         print(
             f"Ran {iters} iterations at time step of {self.time_step} seconds"
         )
+
+    # @sim_method("Imp_Trapz")
+    # def _run_Implicit_Trapz(self, steps: int | None) -> None:
+    #     """Implicit trapezoidal integration technique using an euler estimation"""
+    #     print("Running Simulation with Implicit Trapezoidal Integrator")
+    #     iters = 0
+    #     while not self.is_terminal(self.states[-1]):
+    #         if steps is not None and iters >= steps:
+    #             break
+    #         self._step_state_Implicit_Trapz()
+    #         iters += 1
+
+    #     print(
+    #         f"Ran {iters} iterations at time step of {self.time_step} seconds"
+    #     )
 
     def run(self, steps: int = None):
         self.check_set_up()

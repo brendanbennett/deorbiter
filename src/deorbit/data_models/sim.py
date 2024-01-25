@@ -17,6 +17,8 @@ class SimConfig(BaseModel):
 
     atmosphere_model_kwargs: dict = dict()
 
+    adaptive_time_stepping: Optional[bool] = None
+
 
 class SimData(BaseModel):
     # Data Entries
