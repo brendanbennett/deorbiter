@@ -23,6 +23,7 @@ dependencies = [
     "pyatmos",
     "pydantic",
     "scipy",
+    "tqdm",
 ]
 
 [tool.setuptools.dynamic]
