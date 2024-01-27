@@ -1,21 +1,20 @@
 from typing import Optional
 
 from pydantic import BaseModel
+from deorbit.data_models.atmos import AtmosKwargs
+from deorbit.data_models.methods import MethodKwargs
 
 
 class SimConfig(BaseModel):
-    # By default, our simulation is 2 dimensional
-    dimension: int = 2
-
-    time_step: Optional[float] = None
-
     initial_values: Optional[tuple[tuple,float]] = None
 
     simulation_method: Optional[str] = None
+    
+    simulation_method_kwargs: Optional[MethodKwargs] = None
 
     atmosphere_model: Optional[str] = None
 
-    atmosphere_model_kwargs: dict = dict()
+    atmosphere_model_kwargs: Optional[AtmosKwargs] = None
 
 
 class SimData(BaseModel):

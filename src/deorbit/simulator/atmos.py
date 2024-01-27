@@ -6,6 +6,7 @@ import numpy as np
 from ambiance import Atmosphere as _IcaoAtmosphere
 
 from deorbit.utils.constants import AIR_DENSITY_SEA_LEVEL, EARTH_RADIUS
+from deorbit.data_models.atmos import AtmosKwargs, SimpleAtmosKwargs, IcaoKwargs, CoesaKwargs, CoesaFastKwargs
 
 
 class AtmosphereModel(ABC):
@@ -15,9 +16,12 @@ class AtmosphereModel(ABC):
 
     Methods:
         density(state, time) -> float: abstract; must be implemented in any subclass
-        model_kwargs() -> dict: returns a dictionary of model parameters
+        kwargs() -> AtmosKwargs: returns a pydantic data model of model parameters
     """
-
+    def __init__(self) -> None:
+        super().__init__()
+        self.kwargs: AtmosKwargs = None
+        
     @property
     @abstractmethod
     def name(self):
@@ -26,14 +30,6 @@ class AtmosphereModel(ABC):
     @abstractmethod
     def density(self, state: np.ndarray, time: float) -> float:
         ...
-
-    def model_kwargs(self) -> dict:
-        kwargs = self.__dict__
-        # Filter out private variables
-        # Private variables marked with '_' are not included in the model_kwargs dictionary.
-        # There should be an equal number of keyword arguments to __init__() as there
-        # are non-private instance variables
-        return {key: kwargs[key] for key in kwargs if key[0] != "_"}
 
 
 class SimpleAtmos(AtmosphereModel):
@@ -50,34 +46,29 @@ class SimpleAtmos(AtmosphereModel):
 
     name = "simple_atmos"
 
-    def __init__(
-        self,
-        earth_radius: float = EARTH_RADIUS,
-        surf_density: float = AIR_DENSITY_SEA_LEVEL,
-    ) -> None:
+    def __init__(self, **kwargs) -> None:
         """
         Args:
             earth_radius (float, optional): Earth's radius in metres. Defaults to EARTH_RADIUS.
             surf_density (float, optional): Air density at Earth's surface in kgm^-3. Defaults to AIR_DENSITY_SEA_LEVEL.
         """
         # Document the keywords used in the atmosphere model. This is required.
-        self.earth_radius = earth_radius
-        self.surf_density = surf_density
+        self.kwargs: SimpleAtmosKwargs = SimpleAtmosKwargs(**kwargs)
 
     ## This function can be changed.
     def density(self, state: np.ndarray, time: float) -> float:
         dim = int(len(state) / 2)
 
-        return self.surf_density * np.exp(
-            (-(np.linalg.norm(state[:dim]) / self.earth_radius) + 1)
+        return self.kwargs.surf_density * np.exp(
+            (-(np.linalg.norm(state[:dim]) / self.kwargs.earth_radius) + 1)
         )
 
 
 class IcaoAtmos(AtmosphereModel):
     name = "icao_standard_atmos"
 
-    def __init__(self, earth_radius: float = EARTH_RADIUS):
-        self.earth_radius = earth_radius
+    def __init__(self, **kwargs):
+        self.kwargs: IcaoKwargs = IcaoKwargs(**kwargs)
         self._max_height = 81020
         self._density_at_max_height = _IcaoAtmosphere(self._max_height).density
 
@@ -85,7 +76,7 @@ class IcaoAtmos(AtmosphereModel):
         dim = int(len(state) / 2)
         position = state[:dim]
 
-        height = np.linalg.norm(position) - self.earth_radius
+        height = np.linalg.norm(position) - self.kwargs.earth_radius
         if height <= self._max_height:
             return _IcaoAtmosphere(height).density
         else:
@@ -98,21 +89,21 @@ class IcaoAtmos(AtmosphereModel):
 class CoesaAtmos(AtmosphereModel):
     name = "coesa_atmos"
 
-    def __init__(self, earth_radius: float = EARTH_RADIUS):
+    def __init__(self, **kwargs):
         # Lazy import of coesa76
         if "_coesa76" not in dir():
             global _coesa76
             # Supress random stdout messages from this import
             with redirect_stdout(StringIO()):
                 from pyatmos import coesa76 as _coesa76
-            
-        self.earth_radius = earth_radius
+
+        self.kwargs: CoesaKwargs = CoesaKwargs(**kwargs)
 
     def density(self, state: np.ndarray, time: float) -> float:
         dim = int(len(state) / 2)
         position = state[:dim]
 
-        height = np.linalg.norm(position) - self.earth_radius
+        height = np.linalg.norm(position) - self.kwargs.earth_radius
         height_in_km = height * 1e-3
         return _coesa76(height_in_km).rho
 
@@ -122,29 +113,27 @@ class CoesaAtmosFast(AtmosphereModel):
 
     name = "coesa_atmos_fast"
 
-    def __init__(self, earth_radius: float = EARTH_RADIUS, precision: int = 2):
+    def __init__(self, **kwargs):
+        self.kwargs: CoesaFastKwargs = CoesaFastKwargs(**kwargs)
         assert (
-            precision >= 0 and int(precision) == precision
+            self.kwargs.precision >= 0 and int(self.kwargs.precision) == self.kwargs.precision
         ), "Precision must be a non-negative integer"
-        
+
         # Lazy import of coesa76
         if "_coesa76" not in dir():
             global _coesa76
             with redirect_stdout(StringIO()):
                 from pyatmos import coesa76 as _coesa76
-        
-        self.earth_radius = earth_radius
-        self.precision = precision
 
         start, end = -611, 1000000
-        rounded_start = np.round(start, decimals=-precision)
+        rounded_start = np.round(start, decimals=-self.kwargs.precision)
         self._start = (
             rounded_start
             if rounded_start >= start
-            else rounded_start + 10**precision
+            else rounded_start + 10**self.kwargs.precision
         )
         sample_heights = np.arange(
-            self._start, end + 1, step=10**precision, dtype=np.float64
+            self._start, end + 1, step=10**self.kwargs.precision, dtype=np.float64
         )
         sampled_densities = _coesa76(sample_heights * 1e-3).rho
         self._samples = dict(zip(sample_heights, sampled_densities))
@@ -153,12 +142,12 @@ class CoesaAtmosFast(AtmosphereModel):
         dim = int(len(state) / 2)
         position = state[:dim]
 
-        height = np.linalg.norm(position) - self.earth_radius
-        rounded_height = np.round(height, decimals=-self.precision)
+        height = np.linalg.norm(position) - self.kwargs.earth_radius
+        rounded_height = np.round(height, decimals=-self.kwargs.precision)
         rounded_height = (
             rounded_height
             if rounded_height >= self._start
-            else rounded_height + 10**self.precision
+            else rounded_height + 10**self.kwargs.precision
         )
         try:
             rho = self._samples[rounded_height]

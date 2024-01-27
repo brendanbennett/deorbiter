@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-from deorbit.data_models import SimData
+from deorbit.data_models.sim import SimData
 
 
 def save_sim_data(data: SimData, dir_path_string: str) -> Path:

@@ -7,7 +7,8 @@ import numpy as np
 from tqdm import tqdm
 
 import deorbit.simulator.atmos as atmos
-from deorbit.data_models import SimConfig, SimData
+from deorbit.data_models.sim import SimConfig, SimData
+from deorbit.data_models.atmos import AtmosKwargs
 from deorbit.simulator.atmos import AtmosphereModel
 from deorbit.utils.constants import (
     EARTH_RADIUS,
@@ -112,9 +113,9 @@ class Simulator:
             self._atmosphere_model: AtmosphereModel = model_class(
                 **model_kwargs
             )
-            model_kwargs = self._atmosphere_model.model_kwargs()
+            model_kwargs: AtmosKwargs = self._atmosphere_model.kwargs
             self.config.atmosphere_model = model_string
-            self.config.atmosphere_model_kwargs = model_kwargs
+            self.config.atmosphere_model_kwargs = model_kwargs.model_dump()
         else:
             raise ValueError(
                 f"Model {model_string} is not defined in atmos.py! Defined models are {list(models.keys())}"
@@ -376,7 +377,7 @@ class Simulator:
 
     @property
     def dim(self):
-        return self.config.dimension
+        return self.config.simulation_method_kwargs.dimension
 
     @property
     def x1(self):
