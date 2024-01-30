@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from contextlib import redirect_stdout
 from io import StringIO
+from typing import Callable
 
 import numpy as np
 from ambiance import Atmosphere as _IcaoAtmosphere
@@ -156,3 +157,17 @@ class CoesaAtmosFast(AtmosphereModel):
                 f"Height {height}m at time {time} is not supported by the COESA76-fast atmosphere model!"
             )
         return rho
+
+
+def get_available_atmos_models() -> dict[str, Callable]:
+    """Find available atmosphere models in atmos.py
+
+    Returns:
+        dict[str, subclass(AtmosphereModel)]: Dictionary of {model name: subclass of AtmosphereModel}
+    """
+    full_list = AtmosphereModel.__subclasses__()
+    return {i.name: i for i in full_list}
+
+
+if __name__ == "__main__":
+    breakpoint()
