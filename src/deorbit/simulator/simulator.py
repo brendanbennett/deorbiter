@@ -9,12 +9,13 @@ import numpy.typing as npt
 from tqdm import tqdm
 
 from deorbit.data_models.sim import SimConfig, SimData
-from deorbit.data_models.atmos import AtmosKwargs
+from deorbit.data_models.atmos import AtmosKwargs, get_model_for_atmos
 from deorbit.data_models.methods import (
     MethodKwargs,
     EulerKwargs,
     RK4Kwargs,
     AdamsBashforthKwargs,
+    get_model_for_sim,
 )
 from deorbit.simulator.atmos import AtmosphereModel, get_available_atmos_models
 from deorbit.utils.constants import (
@@ -451,9 +452,23 @@ class RK4Simulator(Simulator):
         print(
             f"Ran {iters} iterations at time step of {self.time_step} seconds"
         )
+        
+        
+def _raise_for_invalid_sim_method(sim_method: str) -> None:
+    """Raises ValueError if the given simulation method name is not defined"""
+    available_methods = list(get_available_sim_methods().keys())
+    if sim_method not in available_methods:
+        raise ValueError(f"Simulation method {sim_method} is not supported. Supported methods are: {available_methods}")
 
 
-def get_available_sim_methods() -> dict[str, Callable]:
+def _raise_for_invalid_atmos_model(atmos_model: str) -> None:
+    """Raises ValueError if the given simulation method name is not defined"""
+    available_models = list(get_available_atmos_models().keys())
+    if atmos_model not in available_models:
+        raise ValueError(f"Atmosphere model {atmos_model} is not supported. Supported models are: {available_models}")
+
+
+def get_available_sim_methods() -> dict[str, type[Simulator]]:
     """Python magic to find the names of implemented simulation methods.
 
     Returns:
@@ -464,8 +479,8 @@ def get_available_sim_methods() -> dict[str, Callable]:
 
 
 def get_simulator(config: SimConfig) -> Simulator:
-    assert config.atmosphere_model in get_available_atmos_models()
-    assert config.simulation_method in get_available_sim_methods()
+    _raise_for_invalid_sim_method(config.simulation_method)
+    _raise_for_invalid_atmos_model(config.atmosphere_model)
     sim_cls: type[Simulator] = get_available_sim_methods()[
         config.simulation_method
     ]
@@ -476,6 +491,59 @@ def get_simulator(config: SimConfig) -> Simulator:
         initial_values=config.initial_values,
     )
     return sim
+
+
+def run(
+    sim_method: str,
+    atmos_model: str,
+    initial_state: npt.ArrayLike,
+    initial_time: float = 0.0,
+    steps: int | None = None,
+    time_step: float = 0.1,
+    sim_method_kwargs: dict | type[MethodKwargs] | None = None,
+    atmos_kwargs: dict | type[AtmosKwargs] | None = None,
+):
+    assert len(initial_state) % 2 == 0
+    
+    _raise_for_invalid_sim_method(sim_method)
+    _raise_for_invalid_atmos_model(atmos_model)
+    
+    dimension: int = int(len(initial_state) / 2)
+    method_kwargs_model: type[MethodKwargs] = get_model_for_sim(sim_method)
+    atmos_kwargs_model: type[AtmosKwargs] = get_model_for_atmos(atmos_model)
+
+    if sim_method_kwargs is None:
+        # Use the defaults set by the data model
+        sim_method_kwargs = method_kwargs_model(
+            dimension=dimension, time_step=time_step
+        )
+    elif type(sim_method_kwargs) is dict:
+        # If a user supplies time_step in this dictionary, prefer it over the one supplied as an argument
+        if "time_step" in sim_method_kwargs:
+            time_step = sim_method_kwargs.pop("time_step")
+        sim_method_kwargs = method_kwargs_model(
+            dimension=dimension, time_step=time_step, **sim_method_kwargs
+        )
+
+    if atmos_kwargs is None:
+        # Use the defaults set by the data model
+        atmos_kwargs = atmos_kwargs_model()
+    elif type(atmos_kwargs) is dict:
+        atmos_kwargs = atmos_kwargs_model(**atmos_kwargs)
+
+    config = SimConfig(
+        initial_values=(initial_state, initial_time),
+        simulation_method=sim_method,
+        simulation_method_kwargs=sim_method_kwargs,
+        atmosphere_model=atmos_model,
+        atmosphere_model_kwargs=atmos_kwargs,
+    )
+    sim = get_simulator(config)
+
+    sim.run(steps=steps)
+    
+    # For now just return the states and times
+    return np.array(sim.states), np.array(sim.times)
 
 
 if __name__ == "__main__":

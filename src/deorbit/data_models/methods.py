@@ -9,7 +9,7 @@ class MethodKwargs(BaseModel):
     dimension: int = 2
     time_step: float
 
-
+# Children of MethodKwargs should have usable defaults for every attribute
 class RK4Kwargs(MethodKwargs):
     method_name = "RK4"
 

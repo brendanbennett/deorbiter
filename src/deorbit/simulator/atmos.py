@@ -13,7 +13,7 @@ from deorbit.data_models.atmos import AtmosKwargs, SimpleAtmosKwargs, IcaoKwargs
 class AtmosphereModel(ABC):
     """Abstract base class for Atmosphere model implementations.
     Attributes:
-        name: abstract; must be set as a class variable in any subclass
+        name: abstract, str; must be set as a class variable in any subclass
 
     Methods:
         density(state, time) -> float: abstract; must be implemented in any subclass
@@ -25,7 +25,7 @@ class AtmosphereModel(ABC):
         
     @property
     @abstractmethod
-    def name(self):
+    def name(self) -> str:
         ...
 
     @abstractmethod
@@ -159,11 +159,11 @@ class CoesaAtmosFast(AtmosphereModel):
         return rho
 
 
-def get_available_atmos_models() -> dict[str, Callable]:
+def get_available_atmos_models() -> dict[str, type[AtmosphereModel]]:
     """Find available atmosphere models in atmos.py
 
     Returns:
-        dict[str, subclass(AtmosphereModel)]: Dictionary of {model name: subclass of AtmosphereModel}
+        dict[str, type[AtmosphereModel]]: Dictionary of {model name: subclass of AtmosphereModel}
     """
     full_list = AtmosphereModel.__subclasses__()
     return {i.name: i for i in full_list}

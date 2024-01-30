@@ -4,6 +4,7 @@ from .simulator import (
     RK4Simulator,
     get_available_sim_methods,
     get_simulator,
+    run,
 )
 from .atmos import get_available_atmos_models
 
@@ -14,4 +15,5 @@ __all__ = [
     "get_available_atmos_models",
     "get_available_sim_methods",
     "get_simulator",
+    "run",
 ]
