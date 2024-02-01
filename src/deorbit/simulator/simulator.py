@@ -412,12 +412,11 @@ def get_available_sim_methods() -> dict[str, type[Simulator]]:
     return Simulator._methods
 
 
-def run(
+def generate_sim_config(
     sim_method: str,
     atmos_model: str,
     initial_state: npt.ArrayLike,
     initial_time: float = 0.0,
-    steps: int | None = None,
     time_step: float = 0.1,
     sim_method_kwargs: dict | type[MethodKwargs] | None = None,
     atmos_kwargs: dict | type[AtmosKwargs] | None = None,
@@ -451,12 +450,34 @@ def run(
         atmos_kwargs = atmos_kwargs_model(**atmos_kwargs)
 
     config = SimConfig(
-        initial_state=initial_state, 
+        initial_state=initial_state,
         initial_time=initial_time,
         simulation_method=sim_method,
         simulation_method_kwargs=sim_method_kwargs,
         atmosphere_model=atmos_model,
         atmosphere_model_kwargs=atmos_kwargs,
+    )
+    return config
+
+
+def run(
+    sim_method: str,
+    atmos_model: str,
+    initial_state: npt.ArrayLike,
+    initial_time: float = 0.0,
+    steps: int | None = None,
+    time_step: float = 0.1,
+    sim_method_kwargs: dict | type[MethodKwargs] | None = None,
+    atmos_kwargs: dict | type[AtmosKwargs] | None = None,
+):
+    config = generate_sim_config(
+        sim_method=sim_method,
+        atmos_model=atmos_model,
+        initial_state=initial_state,
+        initial_time=initial_time,
+        time_step=time_step,
+        sim_method_kwargs=sim_method_kwargs,
+        atmos_kwargs=atmos_kwargs,
     )
     sim = Simulator(config)
 
