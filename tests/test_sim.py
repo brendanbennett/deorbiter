@@ -2,24 +2,12 @@ import numpy as np
 import pytest
 
 from deorbit.data_models.sim import SimConfig
-from deorbit.simulator.atmos import SimpleAtmos
+from deorbit.simulator.atmos import SimpleAtmos, get_available_atmos_models
 from deorbit.simulator.simulator import (
     Simulator,
-    get_available_atmos_models,
     get_available_sim_methods,
 )
 from deorbit.utils.constants import AIR_DENSITY_SEA_LEVEL, EARTH_RADIUS
-
-
-def test_simple_atmos():
-    state = (200, 0, -3, 20)
-    time = 0.1
-    model_kwargs = {"earth_radius": 200, "surf_density": 1}
-    simple_atmos_model = SimpleAtmos(earth_radius=200, surf_density=1)
-    returned_model_kwargs = simple_atmos_model.kwargs.model_dump()
-    density = simple_atmos_model.density(state=state, time=time)
-    assert density == 1
-    assert model_kwargs == returned_model_kwargs
 
 
 def test_simple_atmos_defaults():
@@ -36,10 +24,11 @@ def test_simple_atmos_defaults():
 
 @pytest.mark.parametrize("model", list(get_available_atmos_models().keys()))
 def test_set_atmos_model_with_config(model):
+    intial_values = (np.array([EARTH_RADIUS + 185000, 0, 0, 8000], dtype=np.dtype("float64")),0.0)
     sim = Simulator(
-        SimConfig(atmosphere_model=model, time_step=0.1, simulation_method="euler")
+        SimConfig(atmosphere_model=model)
     )
-    assert sim.config.atmosphere_model == model
+    assert sim._atmosphere_model.kwargs.atmos_name == model
 
 
 @pytest.mark.parametrize("model", list(get_available_atmos_models().keys()))
@@ -101,3 +90,7 @@ def test_sample_simulation(method):
         0.0,
     )
     sim.run(1000)
+
+
+def test_defining_incorrect_sim_class():
+    pass

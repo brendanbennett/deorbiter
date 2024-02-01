@@ -7,11 +7,13 @@ from deorbit.data_models.methods import MethodKwargs
 
 
 class SimConfig(BaseModel):
-    initial_values: Optional[tuple[tuple, float]] = None
+    initial_state: list
+    
+    initial_time: float = 0.0
 
-    simulation_method_kwargs: Optional[MethodKwargs] = None
+    simulation_method_kwargs: MethodKwargs
 
-    atmosphere_model_kwargs: Optional[AtmosKwargs] = None
+    atmosphere_model_kwargs: AtmosKwargs
 
 
 class SimData(BaseModel):

@@ -26,19 +26,31 @@ class AtmosphereModel(ABC):
         kwargs() -> AtmosKwargs: returns a pydantic data model of model parameters
     """
 
+    _models = {}
+
+    def __init_subclass__(cls, model_name: str = None, **kwargs):
+        if model_name is None:
+            raise SyntaxError(
+                "'model_name' must be supplied as an argument when defining a subclass of AtmosphereModel"
+            )
+        super().__init_subclass__(**kwargs)
+        cls._models[model_name] = cls
+
+    def __new__(cls, kwargs: AtmosKwargs):
+        model_name = kwargs.atmos_name
+        model_cls = cls._models[model_name]
+        return super().__new__(model_cls)
+
     def __init__(self) -> None:
         super().__init__()
         self.kwargs: AtmosKwargs = None
 
-    @property
     @abstractmethod
-    def name(self) -> str: ...
-
-    @abstractmethod
-    def density(self, state: np.ndarray, time: float) -> float: ...
+    def density(self, state: np.ndarray, time: float) -> float:
+        ...
 
 
-class SimpleAtmos(AtmosphereModel):
+class SimpleAtmos(AtmosphereModel, model_name="simple_atmos"):
     """Generate simple atmospheric model
 
     Attributes:
@@ -50,16 +62,14 @@ class SimpleAtmos(AtmosphereModel):
         model_kwargs() -> dict: Returns model parameters
     """
 
-    name = "simple_atmos"
-
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, kwargs: SimpleAtmosKwargs) -> None:
         """
         Args:
             earth_radius (float, optional): Earth's radius in metres. Defaults to EARTH_RADIUS.
             surf_density (float, optional): Air density at Earth's surface in kgm^-3. Defaults to AIR_DENSITY_SEA_LEVEL.
         """
         # Document the keywords used in the atmosphere model. This is required.
-        self.kwargs: SimpleAtmosKwargs = SimpleAtmosKwargs(**kwargs)
+        self.kwargs: SimpleAtmosKwargs = kwargs
 
     ## This function can be changed.
     def density(self, state: np.ndarray, time: float) -> float:
@@ -70,11 +80,9 @@ class SimpleAtmos(AtmosphereModel):
         )
 
 
-class IcaoAtmos(AtmosphereModel):
-    name = "icao_standard_atmos"
-
-    def __init__(self, **kwargs):
-        self.kwargs: IcaoKwargs = IcaoKwargs(**kwargs)
+class IcaoAtmos(AtmosphereModel, model_name="icao_standard_atmos"):
+    def __init__(self, kwargs: IcaoKwargs):
+        self.kwargs: IcaoKwargs = kwargs
         self._max_height = 81020
         self._density_at_max_height = _IcaoAtmosphere(self._max_height).density
 
@@ -87,13 +95,13 @@ class IcaoAtmos(AtmosphereModel):
             return _IcaoAtmosphere(height).density
         else:
             # TODO make better high altitude approx
-            return self._density_at_max_height * np.exp(height - self._max_height)
+            return self._density_at_max_height * np.exp(
+                height - self._max_height
+            )
 
 
-class CoesaAtmos(AtmosphereModel):
-    name = "coesa_atmos"
-
-    def __init__(self, **kwargs):
+class CoesaAtmos(AtmosphereModel, model_name="coesa_atmos"):
+    def __init__(self, kwargs: CoesaKwargs):
         # Lazy import of coesa76
         if "_coesa76" not in dir():
             global _coesa76
@@ -101,7 +109,7 @@ class CoesaAtmos(AtmosphereModel):
             with redirect_stdout(StringIO()):
                 from pyatmos import coesa76 as _coesa76
 
-        self.kwargs: CoesaKwargs = CoesaKwargs(**kwargs)
+        self.kwargs: CoesaKwargs = kwargs
 
     def density(self, state: np.ndarray, time: float) -> float:
         dim = int(len(state) / 2)
@@ -112,13 +120,11 @@ class CoesaAtmos(AtmosphereModel):
         return _coesa76(height_in_km).rho
 
 
-class CoesaAtmosFast(AtmosphereModel):
+class CoesaAtmosFast(AtmosphereModel, model_name="coesa_atmos_fast"):
     """Uses a lookup table of atmosphere densities"""
 
-    name = "coesa_atmos_fast"
-
-    def __init__(self, **kwargs):
-        self.kwargs: CoesaFastKwargs = CoesaFastKwargs(**kwargs)
+    def __init__(self, kwargs: CoesaFastKwargs):
+        self.kwargs: CoesaFastKwargs = kwargs
         assert (
             self.kwargs.precision >= 0
             and int(self.kwargs.precision) == self.kwargs.precision
@@ -138,7 +144,10 @@ class CoesaAtmosFast(AtmosphereModel):
             else rounded_start + 10**self.kwargs.precision
         )
         sample_heights = np.arange(
-            self._start, end + 1, step=10**self.kwargs.precision, dtype=np.float64
+            self._start,
+            end + 1,
+            step=10**self.kwargs.precision,
+            dtype=np.float64,
         )
         sampled_densities = _coesa76(sample_heights * 1e-3).rho
         self._samples = dict(zip(sample_heights, sampled_densities))
@@ -163,14 +172,22 @@ class CoesaAtmosFast(AtmosphereModel):
         return rho
 
 
+def raise_for_invalid_atmos_model(atmos_model: str) -> None:
+    """Raises ValueError if the given simulation method name is not defined"""
+    available_models = list(get_available_atmos_models().keys())
+    if atmos_model not in available_models:
+        raise ValueError(
+            f"Atmosphere model {atmos_model} is not supported. Supported models are: {available_models}"
+        )
+
+
 def get_available_atmos_models() -> dict[str, type[AtmosphereModel]]:
     """Find available atmosphere models in atmos.py
 
     Returns:
         dict[str, type[AtmosphereModel]]: Dictionary of {model name: subclass of AtmosphereModel}
     """
-    full_list = AtmosphereModel.__subclasses__()
-    return {i.name: i for i in full_list}
+    return AtmosphereModel._models
 
 
 if __name__ == "__main__":

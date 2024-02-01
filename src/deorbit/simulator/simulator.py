@@ -11,7 +11,10 @@ from tqdm import tqdm
 from deorbit.data_models.atmos import AtmosKwargs, get_model_for_atmos
 from deorbit.data_models.methods import MethodKwargs, get_model_for_sim
 from deorbit.data_models.sim import SimConfig, SimData
-from deorbit.simulator.atmos import AtmosphereModel, get_available_atmos_models
+from deorbit.simulator.atmos import (
+    AtmosphereModel,
+    raise_for_invalid_atmos_model,
+)
 from deorbit.utils.constants import (
     EARTH_RADIUS,
     GM_EARTH,
@@ -31,14 +34,18 @@ class Simulator(ABC):
 
     _methods: dict = {}
 
-    def __init_subclass__(cls, method_name: str, **kwargs):
+    def __init_subclass__(cls, method_name: str = None, **kwargs):
+        if method_name is None:
+            raise SyntaxError(
+                "'method_name' must be supplied as an argument when defining a subclass of Simulator"
+            )
         super().__init_subclass__(**kwargs)
         cls._methods[method_name] = cls
 
     def __new__(cls, config: SimConfig):
         method_name = config.simulation_method_kwargs.method_name
+        raise_for_invalid_sim_method(method_name)
         method_cls = cls._methods[method_name]
-        _raise_for_invalid_sim_method(method_name)
         return super().__new__(method_cls)
 
     def __init__(self, config: SimConfig) -> None:
@@ -48,8 +55,7 @@ class Simulator(ABC):
         self.sim_method_kwargs: MethodKwargs = config.simulation_method_kwargs
 
         self.set_atmosphere_model(config.atmosphere_model_kwargs)
-        initial_state, initial_time = config.initial_values
-        self.set_initial_conditions(initial_state, initial_time)
+        self.set_initial_conditions(config.initial_state, config.initial_time)
 
     def export_config(self) -> SimConfig:
         """
@@ -81,13 +87,9 @@ class Simulator(ABC):
         self.times.append(time)
 
     def set_atmosphere_model(self, model_kwargs: AtmosKwargs) -> None:
-        models = get_available_atmos_models()
         model_name = model_kwargs.atmos_name
-        _raise_for_invalid_atmos_model(model_name)
-        model_class = models[model_name]
-        self._atmosphere_model: AtmosphereModel = model_class(
-            **model_kwargs.model_dump()
-        )
+        raise_for_invalid_atmos_model(model_name)
+        self._atmosphere_model: AtmosphereModel = AtmosphereModel(model_kwargs)
 
     def _pos_from_state(self, state: np.ndarray) -> np.ndarray:
         return state[: self.dim]
@@ -152,7 +154,8 @@ class Simulator(ABC):
         return np.linalg.norm(self._pos_from_state(state)) <= EARTH_RADIUS
 
     @abstractmethod
-    def _run_method(self, steps: int | None) -> None: ...
+    def _run_method(self, steps: int | None) -> None:
+        ...
 
     def run(self, steps: int = None):
         start_time = thread_time_ns()
@@ -225,7 +228,9 @@ class Simulator(ABC):
         """
         config = self.export_config()
         if self.dim == 2:
-            data = SimData(x1=self.x1, x2=self.x2, times=self.times, sim_config=config)
+            data = SimData(
+                x1=self.x1, x2=self.x2, times=self.times, sim_config=config
+            )
         elif self.dim == 3:
             data = SimData(
                 x1=self.x1,
@@ -254,7 +259,8 @@ class EulerSimulator(Simulator, method_name="euler"):
         self._step_time()
         next_state = np.array(self.states[-1], dtype=float)
         next_state += (
-            self._objective_function(self.states[-1], self.times[-1]) * self.time_step
+            self._objective_function(self.states[-1], self.times[-1])
+            * self.time_step
         )
         self.states.append(next_state)
 
@@ -276,7 +282,9 @@ class EulerSimulator(Simulator, method_name="euler"):
             else:
                 iters = steps
 
-        print(f"Ran {iters} iterations at time step of {self.time_step} seconds")
+        print(
+            f"Ran {iters} iterations at time step of {self.time_step} seconds"
+        )
 
 
 class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
@@ -284,7 +292,8 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
         self._step_time()
         next_state = np.array(self.states[-1], dtype=float)
         next_state += (
-            self._objective_function(self.states[-1], self.times[-1]) * self.time_step
+            self._objective_function(self.states[-1], self.times[-1])
+            * self.time_step
         )
         self.states.append(next_state)
 
@@ -336,7 +345,9 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
             else:
                 iters = steps
 
-        print(f"Ran {iters} iterations at time step of {self.time_step} seconds")
+        print(
+            f"Ran {iters} iterations at time step of {self.time_step} seconds"
+        )
 
 
 class RK4Simulator(Simulator, method_name="RK4"):
@@ -378,24 +389,17 @@ class RK4Simulator(Simulator, method_name="RK4"):
             else:
                 iters = steps
 
-        print(f"Ran {iters} iterations at time step of {self.time_step} seconds")
+        print(
+            f"Ran {iters} iterations at time step of {self.time_step} seconds"
+        )
 
 
-def _raise_for_invalid_sim_method(sim_method: str) -> None:
+def raise_for_invalid_sim_method(sim_method: str) -> None:
     """Raises ValueError if the given simulation method name is not defined"""
     available_methods = list(get_available_sim_methods().keys())
     if sim_method not in available_methods:
         raise ValueError(
             f"Simulation method {sim_method} is not supported. Supported methods are: {available_methods}"
-        )
-
-
-def _raise_for_invalid_atmos_model(atmos_model: str) -> None:
-    """Raises ValueError if the given simulation method name is not defined"""
-    available_models = list(get_available_atmos_models().keys())
-    if atmos_model not in available_models:
-        raise ValueError(
-            f"Atmosphere model {atmos_model} is not supported. Supported models are: {available_models}"
         )
 
 
@@ -420,8 +424,8 @@ def run(
 ):
     assert len(initial_state) % 2 == 0
 
-    _raise_for_invalid_sim_method(sim_method)
-    _raise_for_invalid_atmos_model(atmos_model)
+    raise_for_invalid_sim_method(sim_method)
+    raise_for_invalid_atmos_model(atmos_model)
 
     dimension: int = int(len(initial_state) / 2)
     method_kwargs_model: type[MethodKwargs] = get_model_for_sim(sim_method)
@@ -447,7 +451,8 @@ def run(
         atmos_kwargs = atmos_kwargs_model(**atmos_kwargs)
 
     config = SimConfig(
-        initial_values=(initial_state, initial_time),
+        initial_state=initial_state, 
+        initial_time=initial_time,
         simulation_method=sim_method,
         simulation_method_kwargs=sim_method_kwargs,
         atmosphere_model=atmos_model,
