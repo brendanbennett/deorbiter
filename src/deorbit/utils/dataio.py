@@ -36,7 +36,7 @@ def save_sim_data(data: SimData, dir_path_string: str) -> Path:
 
     with open(path, "w") as f:
         json.dump(data.model_dump_json(), f)
-    
+
     return path
 
 
@@ -53,7 +53,7 @@ def _get_filename(stem: str) -> str:
 
 
 def _check_for_file(path: Path) -> Path:
-    """Given a path to a file, check if the file already exists. 
+    """Given a path to a file, check if the file already exists.
     If so, append `_[number]` to the filename where `number` is the
     lowest number such that the file name is unique.
 

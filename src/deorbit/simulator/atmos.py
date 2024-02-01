@@ -6,8 +6,14 @@ from typing import Callable
 import numpy as np
 from ambiance import Atmosphere as _IcaoAtmosphere
 
+from deorbit.data_models.atmos import (
+    AtmosKwargs,
+    CoesaFastKwargs,
+    CoesaKwargs,
+    IcaoKwargs,
+    SimpleAtmosKwargs,
+)
 from deorbit.utils.constants import AIR_DENSITY_SEA_LEVEL, EARTH_RADIUS
-from deorbit.data_models.atmos import AtmosKwargs, SimpleAtmosKwargs, IcaoKwargs, CoesaKwargs, CoesaFastKwargs
 
 
 class AtmosphereModel(ABC):
@@ -19,18 +25,17 @@ class AtmosphereModel(ABC):
         density(state, time) -> float: abstract; must be implemented in any subclass
         kwargs() -> AtmosKwargs: returns a pydantic data model of model parameters
     """
+
     def __init__(self) -> None:
         super().__init__()
         self.kwargs: AtmosKwargs = None
-        
+
     @property
     @abstractmethod
-    def name(self) -> str:
-        ...
+    def name(self) -> str: ...
 
     @abstractmethod
-    def density(self, state: np.ndarray, time: float) -> float:
-        ...
+    def density(self, state: np.ndarray, time: float) -> float: ...
 
 
 class SimpleAtmos(AtmosphereModel):
@@ -82,9 +87,7 @@ class IcaoAtmos(AtmosphereModel):
             return _IcaoAtmosphere(height).density
         else:
             # TODO make better high altitude approx
-            return self._density_at_max_height * np.exp(
-                height - self._max_height
-            )
+            return self._density_at_max_height * np.exp(height - self._max_height)
 
 
 class CoesaAtmos(AtmosphereModel):
@@ -117,7 +120,8 @@ class CoesaAtmosFast(AtmosphereModel):
     def __init__(self, **kwargs):
         self.kwargs: CoesaFastKwargs = CoesaFastKwargs(**kwargs)
         assert (
-            self.kwargs.precision >= 0 and int(self.kwargs.precision) == self.kwargs.precision
+            self.kwargs.precision >= 0
+            and int(self.kwargs.precision) == self.kwargs.precision
         ), "Precision must be a non-negative integer"
 
         # Lazy import of coesa76

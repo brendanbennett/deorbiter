@@ -1,9 +1,13 @@
-import pytest
 import numpy as np
+import pytest
 
 from deorbit.data_models.sim import SimConfig
 from deorbit.simulator.atmos import SimpleAtmos
-from deorbit.simulator.simulator import Simulator, get_available_atmos_models, get_available_sim_methods
+from deorbit.simulator.simulator import (
+    Simulator,
+    get_available_atmos_models,
+    get_available_sim_methods,
+)
 from deorbit.utils.constants import AIR_DENSITY_SEA_LEVEL, EARTH_RADIUS
 
 
@@ -33,9 +37,7 @@ def test_simple_atmos_defaults():
 @pytest.mark.parametrize("model", list(get_available_atmos_models().keys()))
 def test_set_atmos_model_with_config(model):
     sim = Simulator(
-        SimConfig(
-            atmosphere_model=model, time_step=0.1, simulation_method="euler"
-        )
+        SimConfig(atmosphere_model=model, time_step=0.1, simulation_method="euler")
     )
     assert sim.config.atmosphere_model == model
 
@@ -82,7 +84,7 @@ def test_mandatory_fields():
         sim = Simulator(SimConfig(**part_dict))
         with pytest.raises(NotImplementedError):
             sim.check_set_up()
-            
+
 
 @pytest.mark.parametrize("method", list(get_available_sim_methods().keys()))
 def test_sample_simulation(method):
@@ -95,9 +97,7 @@ def test_sample_simulation(method):
     )
     # Initial conditions
     sim.set_initial_conditions(
-        np.array(
-            [EARTH_RADIUS + 185000, 0, 0, 8000], dtype=np.dtype("float64")
-        ),
+        np.array([EARTH_RADIUS + 185000, 0, 0, 8000], dtype=np.dtype("float64")),
         0.0,
     )
     sim.run(1000)
