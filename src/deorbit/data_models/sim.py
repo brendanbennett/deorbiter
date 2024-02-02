@@ -8,7 +8,7 @@ from deorbit.data_models.methods import MethodKwargs
 
 class SimConfig(BaseModel):
     initial_state: list
-    
+
     initial_time: float = 0.0
 
     simulation_method_kwargs: MethodKwargs

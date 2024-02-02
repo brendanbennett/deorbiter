@@ -1,10 +1,5 @@
 from .atmos import get_available_atmos_models
-from .simulator import (
-    Simulator,
-    get_available_sim_methods,
-    run,
-    generate_sim_config,
-)
+from .simulator import Simulator, generate_sim_config, get_available_sim_methods, run
 
 __all__ = [
     "Simulator",

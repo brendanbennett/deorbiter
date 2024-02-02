@@ -13,8 +13,8 @@ from deorbit.data_models.methods import MethodKwargs, get_model_for_sim
 from deorbit.data_models.sim import SimConfig, SimData
 from deorbit.simulator.atmos import (
     AtmosphereModel,
+    get_available_atmos_models,
     raise_for_invalid_atmos_model,
-    get_available_atmos_models
 )
 from deorbit.utils.constants import (
     EARTH_RADIUS,
@@ -155,8 +155,7 @@ class Simulator(ABC):
         return np.linalg.norm(self._pos_from_state(state)) <= EARTH_RADIUS
 
     @abstractmethod
-    def _run_method(self, steps: int | None) -> None:
-        ...
+    def _run_method(self, steps: int | None) -> None: ...
 
     def run(self, steps: int = None):
         start_time = thread_time_ns()
@@ -229,9 +228,7 @@ class Simulator(ABC):
         """
         config = self.export_config()
         if self.dim == 2:
-            data = SimData(
-                x1=self.x1, x2=self.x2, times=self.times, sim_config=config
-            )
+            data = SimData(x1=self.x1, x2=self.x2, times=self.times, sim_config=config)
         elif self.dim == 3:
             data = SimData(
                 x1=self.x1,
@@ -260,8 +257,7 @@ class EulerSimulator(Simulator, method_name="euler"):
         self._step_time()
         next_state = np.array(self.states[-1], dtype=float)
         next_state += (
-            self._objective_function(self.states[-1], self.times[-1])
-            * self.time_step
+            self._objective_function(self.states[-1], self.times[-1]) * self.time_step
         )
         self.states.append(next_state)
 
@@ -283,9 +279,7 @@ class EulerSimulator(Simulator, method_name="euler"):
             else:
                 iters = steps
 
-        print(
-            f"Ran {iters} iterations at time step of {self.time_step} seconds"
-        )
+        print(f"Ran {iters} iterations at time step of {self.time_step} seconds")
 
 
 class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
@@ -293,8 +287,7 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
         self._step_time()
         next_state = np.array(self.states[-1], dtype=float)
         next_state += (
-            self._objective_function(self.states[-1], self.times[-1])
-            * self.time_step
+            self._objective_function(self.states[-1], self.times[-1]) * self.time_step
         )
         self.states.append(next_state)
 
@@ -346,9 +339,7 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
             else:
                 iters = steps
 
-        print(
-            f"Ran {iters} iterations at time step of {self.time_step} seconds"
-        )
+        print(f"Ran {iters} iterations at time step of {self.time_step} seconds")
 
 
 class RK4Simulator(Simulator, method_name="RK4"):
@@ -390,9 +381,7 @@ class RK4Simulator(Simulator, method_name="RK4"):
             else:
                 iters = steps
 
-        print(
-            f"Ran {iters} iterations at time step of {self.time_step} seconds"
-        )
+        print(f"Ran {iters} iterations at time step of {self.time_step} seconds")
 
 
 def raise_for_invalid_sim_method(sim_method: str) -> None:
@@ -471,7 +460,6 @@ def generate_sim_config(
         raise ValueError(
             "Atmosphere model kwargs are invalid. Must either be a dict, a AtmosKwargs instance or None"
         )
-
 
     config = SimConfig(
         initial_state=initial_state,

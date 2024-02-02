@@ -46,8 +46,7 @@ class AtmosphereModel(ABC):
         self.kwargs: AtmosKwargs = None
 
     @abstractmethod
-    def density(self, state: np.ndarray, time: float) -> float:
-        ...
+    def density(self, state: np.ndarray, time: float) -> float: ...
 
 
 class SimpleAtmos(AtmosphereModel, model_name="simple_atmos"):
@@ -95,9 +94,7 @@ class IcaoAtmos(AtmosphereModel, model_name="icao_standard_atmos"):
             return _IcaoAtmosphere(height).density
         else:
             # TODO make better high altitude approx
-            return self._density_at_max_height * np.exp(
-                height - self._max_height
-            )
+            return self._density_at_max_height * np.exp(height - self._max_height)
 
 
 class CoesaAtmos(AtmosphereModel, model_name="coesa_atmos"):
