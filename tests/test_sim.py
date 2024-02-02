@@ -26,6 +26,8 @@ def test_generate_config(method, atmos):
     config = generate_sim_config(method, atmos, initial_state)
     assert config.atmosphere_model_kwargs.atmos_name == atmos
     assert config.simulation_method_kwargs.method_name == method
+    assert np.all(config.initial_state == initial_state)
+    assert config.initial_time == 0.0
 
 
 @pytest.mark.parametrize("method", list(get_available_sim_methods().keys()))
