@@ -14,6 +14,7 @@ from deorbit.data_models.sim import SimConfig, SimData
 from deorbit.simulator.atmos import (
     AtmosphereModel,
     raise_for_invalid_atmos_model,
+    get_available_atmos_models
 )
 from deorbit.utils.constants import (
     EARTH_RADIUS,
@@ -442,12 +443,35 @@ def generate_sim_config(
         sim_method_kwargs = method_kwargs_model(
             dimension=dimension, time_step=time_step, **sim_method_kwargs
         )
+    elif (
+        type(sim_method_kwargs) is not method_kwargs_model
+        and type(sim_method_kwargs) in get_available_sim_methods().values()
+    ):
+        raise ValueError(
+            f"Mismatched kwargs object provided. Expected kwargs for {sim_method}, got kwargs for {sim_method_kwargs.method_name}"
+        )
+    else:
+        raise ValueError(
+            "Simulation method kwargs are invalid. Must either be a dict, a MethodKwargs instance or None"
+        )
 
     if atmos_kwargs is None:
         # Use the defaults set by the data model
         atmos_kwargs = atmos_kwargs_model()
     elif type(atmos_kwargs) is dict:
         atmos_kwargs = atmos_kwargs_model(**atmos_kwargs)
+    elif (
+        type(atmos_kwargs) is not atmos_kwargs_model
+        and type(atmos_kwargs) in get_available_atmos_models().values()
+    ):
+        raise ValueError(
+            f"Mismatched kwargs object provided. Expected kwargs for {atmos_model}, got kwargs for {atmos_kwargs.atmos_name}"
+        )
+    else:
+        raise ValueError(
+            "Atmosphere model kwargs are invalid. Must either be a dict, a AtmosKwargs instance or None"
+        )
+
 
     config = SimConfig(
         initial_state=initial_state,
@@ -460,16 +484,25 @@ def generate_sim_config(
     return config
 
 
+def run_with_config(
+    config: SimConfig,
+    steps: int | None = None,
+) -> Simulator:
+    sim = Simulator(config)
+    sim.run(steps=steps)
+    return sim
+
+
 def run(
     sim_method: str,
     atmos_model: str,
     initial_state: npt.ArrayLike,
     initial_time: float = 0.0,
-    steps: int | None = None,
     time_step: float = 0.1,
     sim_method_kwargs: dict | type[MethodKwargs] | None = None,
     atmos_kwargs: dict | type[AtmosKwargs] | None = None,
-):
+    steps: int | None = None,
+) -> Simulator:
     config = generate_sim_config(
         sim_method=sim_method,
         atmos_model=atmos_model,
@@ -479,12 +512,8 @@ def run(
         sim_method_kwargs=sim_method_kwargs,
         atmos_kwargs=atmos_kwargs,
     )
-    sim = Simulator(config)
-
-    sim.run(steps=steps)
-
-    # For now just return the states and times
-    return np.array(sim.states), np.array(sim.times)
+    sim = run_with_config(config, steps)
+    return sim
 
 
 if __name__ == "__main__":
