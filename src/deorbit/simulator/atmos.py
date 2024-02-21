@@ -29,6 +29,8 @@ class AtmosphereModel(ABC):
     _models = {}
 
     def __init_subclass__(cls, model_name: str = None, **kwargs):
+        # This special method is called when a _subclass_ is defined in the code. 
+        # This allows the `model_name` to be passed as an argument to the subclass instantiator
         if model_name is None:
             raise SyntaxError(
                 "'model_name' must be supplied as an argument when defining a subclass of AtmosphereModel"
