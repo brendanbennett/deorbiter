@@ -35,8 +35,18 @@ class IcaoKwargs(AtmosKwargs):
 
 
 def get_model_for_atmos(atmos_model_name: str) -> type[AtmosKwargs]:
-    """Returns the correct kwargs model for the given atmosphere model"""
-
+    """
+    Returns the correct kwargs model for the given atmosphere model.
+    
+    Args:
+        atmos_model_name (str): The name of the atmosphere model.
+        
+    Returns:
+        type[AtmosKwargs]: The kwargs model corresponding to the given atmosphere model.
+        
+    Raises:
+        ValueError: If the atmosphere model has no supporting kwargs model.
+    """
     for model in AtmosKwargs.__subclasses__():
         if model.atmos_name == atmos_model_name:
             return model
