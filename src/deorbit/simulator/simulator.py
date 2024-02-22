@@ -4,12 +4,19 @@ from time import thread_time_ns
 from typing import Callable
 
 import numpy as np
+from tqdm import tqdm
 
 import deorbit.simulator.atmos as atmos
 from deorbit.data_models import SimConfig, SimData
 from deorbit.simulator.atmos import AtmosphereModel
-from deorbit.utils.constants import (EARTH_RADIUS, GM_EARTH, MEAN_DRAG_COEFF,
-                                     MEAN_XSECTIONAL_AREA, SATELLITE_MASS, MACHINE_PRECISION)
+from deorbit.utils.constants import (
+    EARTH_RADIUS, 
+    GM_EARTH, 
+    MEAN_DRAG_COEFF,
+    MEAN_XSECTIONAL_AREA, 
+    SATELLITE_MASS, 
+    MACHINE_PRECISION
+)
 from deorbit.utils.dataio import save_sim_data
 
 
@@ -208,12 +215,19 @@ class Simulator:
         self._step_time()
         next_state = np.array(self.states[-1])
         k1 = self._objective_function(self.states[-1], self.times[-1])
-        k2 = self._objective_function((self.states[-1] + (self.time_step*k1)/2), (self.times[-1] + self.time_step/2))
-        k3 = self._objective_function((self.states[-1] + (self.time_step*k2)/2),  (self.times[-1] + self.time_step/2))
-        k4 = self._objective_function((self.states[-1] + self.time_step*k3), (self.times[-1] + self.time_step))
-        next_state += (
-            self.time_step * (1/6)*(k1+2*k2+2*k3+k4)
+        k2 = self._objective_function(
+            (self.states[-1] + (self.time_step * k1) / 2),
+            (self.times[-1] + self.time_step / 2),
         )
+        k3 = self._objective_function(
+            (self.states[-1] + (self.time_step * k2) / 2),
+            (self.times[-1] + self.time_step / 2),
+        )
+        k4 = self._objective_function(
+            (self.states[-1] + self.time_step * k3),
+            (self.times[-1] + self.time_step),
+        )
+        next_state += self.time_step * (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
         self.states.append(next_state)
 
     def _pseudo_RK4_step(self, state, time, h) -> float:
@@ -276,12 +290,20 @@ class Simulator:
     def _run_euler(self, steps: int | None) -> None:
         """Simple forward euler integration technique"""
         print("Running simulation with Euler integrator")
-        iters = 0
-        while not self.is_terminal(self.states[-1]):
-            if steps is not None and iters >= steps:
-                break
-            self._step_state_euler()
-            iters += 1
+        # Boilerplate code for stepping the simulation
+        if steps is None:
+            iters = 0
+            while not self.is_terminal(self.states[-1]):
+                self._step_state_euler()
+                iters += 1
+        else:
+            for i in tqdm(range(steps)):
+                if self.is_terminal(self.states[-1]):
+                    iters = i
+                    break
+                self._step_state_euler()
+            else:
+                iters = steps
 
         print(
             f"Ran {iters} iterations at time step of {self.time_step} seconds"
@@ -307,12 +329,20 @@ class Simulator:
         function_buffer.append(
             self._objective_function(self.states[-1], self.times[-1])
         )
-
-        while not self.is_terminal(self.states[-1]):
-            if steps is not None and iters >= steps:
-                break
-            self._step_state_adams_bashforth(function_buffer)
-            iters += 1
+        # Boilerplate code for stepping the simulation
+        if steps is None:
+            iters = 0
+            while not self.is_terminal(self.states[-1]):
+                self._step_state_adams_bashforth(function_buffer)
+                iters += 1
+        else:
+            for i in tqdm(range(steps)):
+                if self.is_terminal(self.states[-1]):
+                    iters = i
+                    break
+                self._step_state_adams_bashforth(function_buffer)
+            else:
+                iters = steps
 
         print(
             f"Ran {iters} iterations at time step of {self.time_step} seconds"
@@ -321,26 +351,39 @@ class Simulator:
     @sim_method("RK4")
     def _run_RK4(self, steps: int | None) -> None:
         """4th order Runge Kutta Numerical Integration Method"""
-        
-
         if self.config.adaptive_time_stepping == True:
             print("Running simulation with RK4 integrator and adaptive time stepping")
             iters = 0
             current_time_step = self.time_step
-            while not self.is_terminal(self.states[-1]):
-                if steps is not None and iters >= steps:
-                    break
-                current_time_step = self._adaptive_step_state_RK4(current_time_step)
-
-                iters += 1
+            if steps is None:
+                iters = 0
+                while not self.is_terminal(self.states[-1]):
+                    current_time_step = self._adaptive_step_state_RK4(current_time_step)
+                    iters += 1
+            else:
+                for i in tqdm(range(steps)):
+                    if self.is_terminal(self.states[-1]):
+                        iters = i
+                        break
+                    current_time_step = self._adaptive_step_state_RK4(current_time_step)
+                else:
+                    iters = steps
         else:
             print("Running simulation with RK4 integrator")
             iters = 0
-            while not self.is_terminal(self.states[-1]):
-                if steps is not None and iters >= steps:
-                    break
-                self._step_state_RK4()
-                iters += 1
+            if steps is None:
+                iters = 0
+                while not self.is_terminal(self.states[-1]):
+                    self._step_state_RK4()
+                    iters += 1
+            else:
+                for i in tqdm(range(steps)):
+                    if self.is_terminal(self.states[-1]):
+                        iters = i
+                        break
+                    self._step_state_RK4()
+                else:
+                    iters = steps
 
         print(
             f"Ran {iters} iterations at time step of {self.time_step} seconds"
@@ -455,7 +498,7 @@ class Simulator:
 
     def save_data(self, save_dir_path: str) -> Path:
         """Saves simulation data to [save_dir_path] directory as defined in the SimData data model.
-        
+
         File name format: sim_data_[unix time in ms].json
 
         Args:
