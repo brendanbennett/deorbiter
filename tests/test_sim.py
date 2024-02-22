@@ -1,103 +1,79 @@
-import pytest
 import numpy as np
+import pytest
 
+from deorbit.data_models.atmos import SimpleAtmosKwargs, get_model_for_atmos
+from deorbit.data_models.methods import EulerKwargs, get_model_for_sim
 from deorbit.data_models.sim import SimConfig
-from deorbit.simulator.atmos import SimpleAtmos
-from deorbit.simulator.simulator import Simulator, get_available_atmos_models, get_available_sim_methods
+from deorbit.simulator import (
+    Simulator,
+    generate_sim_config,
+    get_available_sim_methods,
+    run,
+)
+from deorbit.simulator.atmos import get_available_atmos_models
 from deorbit.utils.constants import AIR_DENSITY_SEA_LEVEL, EARTH_RADIUS
 
 
-def test_simple_atmos():
-    state = (200, 0, -3, 20)
-    time = 0.1
-    model_kwargs = {"earth_radius": 200, "surf_density": 1}
-    simple_atmos_model = SimpleAtmos(earth_radius=200, surf_density=1)
-    returned_model_kwargs = simple_atmos_model.model_kwargs()
-    density = simple_atmos_model.density(state=state, time=time)
-    assert density == 1
-    assert model_kwargs == returned_model_kwargs
+@pytest.mark.parametrize(
+    "method, atmos",
+    zip(
+        list(get_available_sim_methods().keys()),
+        list(get_available_atmos_models().keys()),
+    ),
+)
+def test_generate_config(method, atmos):
+    initial_state = np.array((EARTH_RADIUS + 100000, 0, 0, 8000))
+    config = generate_sim_config(method, atmos, initial_state)
+    assert config.atmosphere_model_kwargs.atmos_name == atmos
+    assert config.simulation_method_kwargs.method_name == method
+    assert np.all(config.initial_state == initial_state)
+    assert config.initial_time == 0.0
 
-
-def test_simple_atmos_defaults():
-    state = (EARTH_RADIUS, 0, -3, 20)
-    time = 0.1
-    simple_atmos_model = SimpleAtmos()
-    returned_model_kwargs = simple_atmos_model.model_kwargs()
-    density = simple_atmos_model.density(state=state, time=time)
-    assert density == AIR_DENSITY_SEA_LEVEL
-    assert set(returned_model_kwargs.values()) == set(
-        [EARTH_RADIUS, AIR_DENSITY_SEA_LEVEL]
-    )
-
-
-@pytest.mark.parametrize("model", list(get_available_atmos_models().keys()))
-def test_set_atmos_model_with_config(model):
-    sim = Simulator(
-        SimConfig(
-            atmosphere_model=model, time_step=0.1, simulation_method="euler"
-        )
-    )
-    assert sim.config.atmosphere_model == model
-
-
-@pytest.mark.parametrize("model", list(get_available_atmos_models().keys()))
-def test_set_atmos_model_with_method(model):
-    sim = Simulator(SimConfig(time_step=0.1, simulation_method="euler"))
-    sim.set_atmosphere_model(model)
-    assert sim.config.atmosphere_model == model
-
-
-def test_set_simple_atmos_defaults():
-    sim = Simulator(SimConfig(atmosphere_model="simple_atmos"))
-    state = (EARTH_RADIUS, 0, -3, 20)
-    time = 0.1
-    density = sim.atmosphere(state=state, time=time)
-    assert density == AIR_DENSITY_SEA_LEVEL
-    assert set(sim.config.atmosphere_model_kwargs.values()) == set(
-        [EARTH_RADIUS, AIR_DENSITY_SEA_LEVEL]
-    )
-
-
-@pytest.mark.parametrize("model", list(get_available_atmos_models().keys()))
-def test_atmos_eval(model):
-    sim = Simulator(SimConfig())
-    sim.set_atmosphere_model(model)
-    state = (EARTH_RADIUS + 8000, 10000, 0, 0)
-    density = sim.atmosphere(state=state, time=1)
-    assert density
-
-
-def test_mandatory_fields():
-    full_dict = {
-        "atmosphere_model": "coesa_atmos",
-        "time_step": 0.1,
-        "simulation_method": "euler",
-        "initial_values": ((EARTH_RADIUS + 8000, 10000, 0, 0), 0.0),
-    }
-    sim = Simulator(SimConfig(**full_dict))
-    sim.check_set_up()
-
-    for k in full_dict.keys():
-        part_dict = {i: full_dict[i] for i in full_dict if i != k}
-        sim = Simulator(SimConfig(**part_dict))
-        with pytest.raises(NotImplementedError):
-            sim.check_set_up()
-            
 
 @pytest.mark.parametrize("method", list(get_available_sim_methods().keys()))
 def test_sample_simulation(method):
-    sim = Simulator(
-        SimConfig(
-            time_step=0.1,
-            atmosphere_model="coesa_atmos_fast",
-            simulation_method=method,
-        )
+    initial_state = np.array((EARTH_RADIUS + 100000, 0, 0, 8000))
+    run(method, "coesa_atmos_fast", initial_state, steps=1000)
+
+
+def test_defining_sim_class_no_name():
+    """Simulator subclasses need a name defined"""
+    with pytest.raises(SyntaxError):
+
+        class MySimulator(Simulator):
+            def _run_method(self):
+                pass
+
+
+def test_defining_sim_class_no_run_method():
+    """Simulator subclasses need a `_run_method` method"""
+
+    class MySimulator(Simulator, method_name="mysim"):
+        pass
+
+    with pytest.raises(TypeError):
+        MySimulator()
+
+
+def test_adding_sim_subclass():
+    """Creating a subclass should update the name dictionary in the parent class"""
+    method_name = "mysimulator"
+
+    class MySimulator(Simulator, method_name=method_name):
+        pass
+
+    assert method_name in Simulator._methods
+    assert method_name in get_available_sim_methods()
+
+
+def test_raise_for_invalid_sim_method():
+    initial_state = np.array((EARTH_RADIUS + 100000, 0, 0, 8000))
+    sim_kwargs = EulerKwargs(time_step=0.1)
+    EulerKwargs.method_name = "not_a_method"
+    config = SimConfig(
+        initial_state=initial_state,
+        simulation_method_kwargs=sim_kwargs,
+        atmosphere_model_kwargs=SimpleAtmosKwargs(),
     )
-    # Initial conditions
-    sim.set_initial_conditions(
-        np.array(
-            [EARTH_RADIUS + 185000, 0, 0, 8000], dtype=np.dtype("float64")
-        ),
-        0.0,
-    )
-    sim.run(1000)
+    with pytest.raises(ValueError):
+        Simulator(config)

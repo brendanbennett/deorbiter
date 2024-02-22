@@ -1,3 +1,3 @@
-from .sim import SimConfig, SimData
-
-__all__ = ["SimData", "SimConfig"]
+import deorbit.data_models.atmos as atmos
+import deorbit.data_models.methods as methods
+import deorbit.data_models.sim as sim

@@ -1,14 +1,21 @@
-from inspect import getmembers, isclass
+from abc import ABC, abstractmethod
 from pathlib import Path
 from time import thread_time_ns
 from typing import Callable
 
 import numpy as np
+import numpy.typing as npt
+from numpy._typing import ArrayLike
 from tqdm import tqdm
 
-import deorbit.simulator.atmos as atmos
-from deorbit.data_models import SimConfig, SimData
-from deorbit.simulator.atmos import AtmosphereModel
+from deorbit.data_models.atmos import AtmosKwargs, get_model_for_atmos
+from deorbit.data_models.methods import MethodKwargs, get_model_for_sim
+from deorbit.data_models.sim import SimConfig, SimData
+from deorbit.simulator.atmos import (
+    AtmosphereModel,
+    get_available_atmos_models,
+    raise_for_invalid_atmos_model,
+)
 from deorbit.utils.constants import (
     EARTH_RADIUS,
     GM_EARTH,
@@ -19,74 +26,101 @@ from deorbit.utils.constants import (
 from deorbit.utils.dataio import save_sim_data
 
 
-def sim_method(name: str) -> Callable:
-    """Decorator to mark a Simulator class method as one which runs a simulation method.
-    A name must be provided as an argument. This name string will be the one used by
-    the end user to specify the simulation method at run time.
+class Simulator(ABC):
+    """
+    Base class for simulators.
 
-    Usage:
+    Attributes:
+        states (list): List of state vectors.
+        times (list): List of simulation times.
+        _atmosphere_model (Callable): Atmosphere model used for the simulation.
+        sim_method_kwargs (MethodKwargs): Configuration for the simulation method.
+
+    Methods:
+        export_config(self) -> SimConfig: Returns a configuration object for the simulation.
+        set_initial_conditions(self, state: np.ndarray, time: float): Sets the initial conditions for the simulation.
+        set_atmosphere_model(self, model_kwargs: AtmosKwargs): Sets the atmosphere model for the simulation.
+        atmosphere(self, state: np.ndarray, time: float) -> float: Calculates the atmosphere density at a given state and time.
+        run(self, steps: int = None): Runs the simulation for a specified number of steps.
+        gather_data(self) -> SimData: Generates a data object containing the simulation data and configuration.
+        save_data(self, save_dir_path: str) -> Path: Saves the simulation data to a specified directory.
+    
+    Examples:
     ```
-    @sim_method("forward_euler")
-    def _run_forward_euler(...):
-        ...
-    ```"""
-
-    # Check that the programmer has provided a name.
-    if not isinstance(name, str):
-        raise SyntaxError(
-            "Simulation method decorator must be supplied with a name!"
-        )
-
-    def wrapper(method: Callable) -> Callable:
-        method.__sim_method_name__: str = name
-        return method
-
-    return wrapper
-
-
-class Simulator:
-    """Simulator class used to generate satellite simulation data.
-    Must be initialised with a SimConfig instance. This config may be empty on initialisation,
-    but the
-
-    Usage:
-    ```
-    sim_config = SimConfig(
-        time_step=0.1,
-        atmosphere_model="coesa_atmos",
-        simulation_method="euler",
+    config = deorbit.data_models.sim.SimConfig(
+        initial_state=(deorbit.constants.EARTH_RADIUS + 100000, 0, 0, 8000),
+        simulation_method_kwargs=deorbit.data_models.methods.RK4Kwargs(time_step=0.1),
+        atmosphere_model_kwargs=deorbit.data_models.atmos.CoesaFastKwargs()
     )
-    sim = Simulator(sim_config)
-    sim.run(steps=10000)
+    sim = Simulator(config)
+    sim.run(150000)
     ```
     """
 
-    def __init__(self, config: SimConfig) -> None:
+    _methods: dict = {}
+
+    def __init_subclass__(cls, method_name: str = None, **kwargs):
+        # This special method is called when a _subclass_ is defined in the code. 
+        # This allows the `method_name` to be passed as an argument to the subclass instantiator
+        if method_name is None:
+            raise SyntaxError(
+                "'method_name' must be supplied as an argument when defining a subclass of Simulator"
+            )
+        super().__init_subclass__(**kwargs)
+        cls._methods[method_name] = cls
+
+    def __new__(cls, config: SimConfig):
+        """
+        Create a new instance of the simulator using the specified configuration.
+
+        Args:
+            config (SimConfig): The configuration object for the simulator.
+
+        Returns:
+            object: An instance of the simulator matching the simulation method defined in config.
+
+        Raises:
+            ValueError: If the specified simulation method is invalid.
+        """
+        method_name = config.simulation_method_kwargs.method_name
+        raise_for_invalid_sim_method(method_name)
+        method_cls = cls._methods[method_name]
+        return super().__new__(method_cls)
+
+    def __init__(self, config: SimConfig):
+        """
+        Initialize the Simulator object. 
+        Here, as generated by `__new__`, `self` is actually an instance of the 
+        simulator subclass matching the simulation method in `config.simulation_method_kwargs`
+
+        Args:
+            config (SimConfig): The configuration object containing simulation parameters.
+
+        Returns:
+            None
+        """
+        
         self.states: list[np.ndarray] = list()
         self.times: list[float] = list()
         self._atmosphere_model: Callable = None
-        self._simulation_method: str = None
-        self.config: SimConfig = None
-        self.available_sim_methods = get_available_sim_methods()
+        self.sim_method_kwargs: MethodKwargs = config.simulation_method_kwargs
 
-        self.load_config(config)
+        self.set_atmosphere_model(config.atmosphere_model_kwargs)
+        self.set_initial_conditions(config.initial_state, config.initial_time)
 
-    def load_config(self, config: SimConfig):
-        self.config = config
-
-        # Initialise atmosphere model if supplied
-        if self.config.atmosphere_model is not None:
-            self.set_atmosphere_model(
-                self.config.atmosphere_model,
-                self.config.atmosphere_model_kwargs,
-            )
-
-        if self.config.simulation_method is not None:
-            self.set_simulation_method(self.config.simulation_method)
-
-        if self.config.initial_values is not None:
-            initial_state, initial_time = self.config.initial_values
-            self.set_initial_conditions(initial_state, initial_time)
+    def export_config(self) -> SimConfig:
+        """
+        Returns:
+            SimConfig: Config object which can be used to recreate this simulation
+        """
+        assert len(self.states) > 0 and len(self.times) > 0
+        initial_values = list(self.states[0]), self.times[0]
+        config = SimConfig(
+            initial_values=initial_values,
+            simulation_method_kwargs=self.sim_method_kwargs,
+            atmosphere_model_kwargs=self._atmosphere_model.kwargs,
+        )
+        return config
 
     def _reset_state_and_time(self) -> None:
         self.states = list()
@@ -103,30 +137,10 @@ class Simulator:
         self.states.append(state)
         self.times.append(time)
 
-    def set_atmosphere_model(
-        self, model_string: str = None, model_kwargs: dict = dict()
-    ) -> None:
-        models = get_available_atmos_models()
-        if model_string in models:
-            model_class = models[model_string]
-            self._atmosphere_model: AtmosphereModel = model_class(
-                **model_kwargs
-            )
-            model_kwargs = self._atmosphere_model.model_kwargs()
-            self.config.atmosphere_model = model_string
-            self.config.atmosphere_model_kwargs = model_kwargs
-        else:
-            raise ValueError(
-                f"Model {model_string} is not defined in atmos.py! Defined models are {list(models.keys())}"
-            )
-
-    def set_simulation_method(self, sim_method_name: str = None):
-        if sim_method_name not in self.available_sim_methods:
-            raise NotImplementedError(
-                f"{self._simulation_method} is not an implemented simulation method! Must be one of: {list(self.available_sim_methods.keys())}"
-            )
-        self._simulation_method = sim_method_name
-        self.config.simulation_method = sim_method_name
+    def set_atmosphere_model(self, model_kwargs: AtmosKwargs) -> None:
+        model_name = model_kwargs.atmos_name
+        raise_for_invalid_atmos_model(model_name)
+        self._atmosphere_model: AtmosphereModel = AtmosphereModel(model_kwargs)
 
     def _pos_from_state(self, state: np.ndarray) -> np.ndarray:
         return state[: self.dim]
@@ -187,58 +201,92 @@ class Simulator:
         accel = self._calculate_accel(state, time)
         return np.concatenate((state[self.dim :], accel))
 
+    def is_terminal(self, state: np.ndarray) -> bool:
+        return np.linalg.norm(self._pos_from_state(state)) <= EARTH_RADIUS
+
+    @abstractmethod
+    def _run_method(self, steps: int | None) -> None: ...
+
+    def run(self, steps: int = None):
+        start_time = thread_time_ns()
+
+        # Run with selected simulation method
+        self._run_method(steps)
+
+        elapsed_time = (thread_time_ns() - start_time) * 1e-9
+
+        if self.is_terminal(self.states[-1]):
+            print(
+                f"Impacted at {self.states[-1][:self.dim]} at velocity {self.states[-1][self.dim:]} at simulated time {self.times[-1]}s."
+            )
+
+        print(f"Simulation finished in {elapsed_time:.5f} seconds")
+
+    @property
+    def time_step(self):
+        return self.sim_method_kwargs.time_step
+
+    @property
+    def dim(self):
+        return self.sim_method_kwargs.dimension
+
+    @property
+    def x1(self):
+        return [xt[0] for xt in self.states]
+
+    @property
+    def x2(self):
+        return [xt[1] for xt in self.states]
+
+    @property
+    def x3(self):
+        # assert (
+        #     self.dim >= 3
+        # ), "Attempted to access x3 coordinate from 2D simulator"
+        return [xt[2] for xt in self.states]
+
+    def gather_data(self) -> SimData:
+        """Generates a portable data object containing all the simulation data reqiured to save.
+
+        Returns:
+            SimData: pydantic data model containing both simulated data and config.
+        """
+        config = self.export_config()
+        if self.dim == 2:
+            data = SimData(x1=self.x1, x2=self.x2, times=self.times, sim_config=config)
+        elif self.dim == 3:
+            data = SimData(
+                x1=self.x1,
+                x2=self.x2,
+                x3=self.x3,
+                times=self.times,
+                sim_config=config,
+            )
+        else:
+            raise Exception("Sim dimension is not 2 or 3!")
+        return data
+
+    def save_data(self, save_dir_path: str) -> Path:
+        """Saves simulation data to [save_dir_path] directory as defined in the SimData data model.
+
+        File name format: sim_data_[unix time in ms].json
+
+        Args:
+            save_dir_path (Path like): Data directory to save json file.
+        """
+        save_sim_data(self.gather_data(), dir_path_string=save_dir_path)
+
+
+class EulerSimulator(Simulator, method_name="euler"):
     def _step_state_euler(self) -> None:
         self._step_time()
         next_state = np.array(self.states[-1], dtype=float)
         next_state += (
-            self._objective_function(self.states[-1], self.times[-1])
-            * self.time_step
+            self._objective_function(self.states[-1], self.times[-1]) * self.time_step
         )
         self.states.append(next_state)
 
-    def _step_state_adams_bashforth(self, buffer: list) -> None:
-        func_n_minus_2, func_n_minus_1 = buffer
-        # Update with two step Adams-Bashforth
-        next_state = (
-            self.states[-1]
-            + (3 / 2) * self.time_step * func_n_minus_1
-            - (1 / 2) * self.time_step * func_n_minus_2
-        )
-        # Update buffer with next function evaluation f(xn, tn)
-        self._step_time()
-        buffer.append(self._objective_function(next_state, self.times[-1]))
-        del buffer[0]
-        self.states.append(next_state)
-
-    def _step_state_RK4(self) -> None:
-        self._step_time()
-        next_state = np.array(self.states[-1])
-        k1 = self._objective_function(self.states[-1], self.times[-1])
-        k2 = self._objective_function(
-            (self.states[-1] + (self.time_step * k1) / 2),
-            (self.times[-1] + self.time_step / 2),
-        )
-        k3 = self._objective_function(
-            (self.states[-1] + (self.time_step * k2) / 2),
-            (self.times[-1] + self.time_step / 2),
-        )
-        k4 = self._objective_function(
-            (self.states[-1] + self.time_step * k3),
-            (self.times[-1] + self.time_step),
-        )
-        next_state += self.time_step * (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
-        self.states.append(next_state)
-
-    # def step_state_Implicit_Trapz(self) -> None:
-    #     self._step_time()
-    #     next_state = np.array(self.states[-1])
-    #     #will be able to do this when understand code better
-              
-    def is_terminal(self, state: np.ndarray) -> bool:
-        return np.linalg.norm(self._pos_from_state(state)) <= EARTH_RADIUS
-
-    @sim_method("euler")
-    def _run_euler(self, steps: int | None) -> None:
+    def _run_method(self, steps: int | None) -> None:
         """Simple forward euler integration technique"""
         print("Running simulation with Euler integrator")
         # Boilerplate code for stepping the simulation
@@ -256,12 +304,33 @@ class Simulator:
             else:
                 iters = steps
 
-        print(
-            f"Ran {iters} iterations at time step of {self.time_step} seconds"
-        )
+        print(f"Ran {iters} iterations at time step of {self.time_step} seconds")
 
-    @sim_method("adams_bashforth")
-    def _run_adams_bashforth(self, steps: int | None) -> None:
+
+class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
+    def _step_state_euler(self) -> None:
+        self._step_time()
+        next_state = np.array(self.states[-1], dtype=float)
+        next_state += (
+            self._objective_function(self.states[-1], self.times[-1]) * self.time_step
+        )
+        self.states.append(next_state)
+
+    def _step_state_adams_bashforth(self, buffer: list) -> None:
+        func_n_minus_2, func_n_minus_1 = buffer
+        # Update with two step Adams-Bashforth
+        next_state = (
+            self.states[-1]
+            + (3 / 2) * self.time_step * func_n_minus_1
+            - (1 / 2) * self.time_step * func_n_minus_2
+        )
+        # Update buffer with next function evaluation f(xn, tn)
+        self._step_time()
+        buffer.append(self._objective_function(next_state, self.times[-1]))
+        del buffer[0]
+        self.states.append(next_state)
+
+    def _run_method(self, steps: int | None) -> None:
         """Two-step Adams-Bashforth integration technique.
 
         A linear multistep method that only samples the function at the same time steps as are output.
@@ -295,12 +364,30 @@ class Simulator:
             else:
                 iters = steps
 
-        print(
-            f"Ran {iters} iterations at time step of {self.time_step} seconds"
-        )
+        print(f"Ran {iters} iterations at time step of {self.time_step} seconds")
 
-    @sim_method("RK4")
-    def _run_RK4(self, steps: int | None) -> None:
+
+class RK4Simulator(Simulator, method_name="RK4"):
+    def _step_state_RK4(self) -> None:
+        self._step_time()
+        next_state = np.array(self.states[-1])
+        k1 = self._objective_function(self.states[-1], self.times[-1])
+        k2 = self._objective_function(
+            (self.states[-1] + (self.time_step * k1) / 2),
+            (self.times[-1] + self.time_step / 2),
+        )
+        k3 = self._objective_function(
+            (self.states[-1] + (self.time_step * k2) / 2),
+            (self.times[-1] + self.time_step / 2),
+        )
+        k4 = self._objective_function(
+            (self.states[-1] + self.time_step * k3),
+            (self.times[-1] + self.time_step),
+        )
+        next_state += self.time_step * (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
+        self.states.append(next_state)
+
+    def _run_method(self, steps: int | None) -> None:
         """4th order Runge Kutta Numerical Integration Method"""
         print("Running simulation with RK4 integrator")
         iters = 0
@@ -319,146 +406,130 @@ class Simulator:
             else:
                 iters = steps
 
-        print(
-            f"Ran {iters} iterations at time step of {self.time_step} seconds"
+        print(f"Ran {iters} iterations at time step of {self.time_step} seconds")
+
+
+def raise_for_invalid_sim_method(sim_method: str) -> None:
+    """Raises ValueError if the given simulation method name is not defined"""
+    available_methods = list(get_available_sim_methods().keys())
+    if sim_method not in available_methods:
+        raise ValueError(
+            f"Simulation method {sim_method} is not supported. Supported methods are: {available_methods}"
         )
 
-    def run(self, steps: int = None):
-        self.check_set_up()
 
-        start_time = thread_time_ns()
-
-        # Run with selected simulation method
-        getattr(self, self.available_sim_methods[self._simulation_method])(
-            steps
-        )
-
-        elapsed_time = (thread_time_ns() - start_time) * 1e-9
-
-        if self.is_terminal(self.states[-1]):
-            print(
-                f"Impacted at {self.states[-1][:self.dim]} at velocity {self.states[-1][self.dim:]} at simulated time {self.times[-1]}s."
-            )
-
-        print(f"Simulation finished in {elapsed_time:.5f} seconds")
-
-    def check_set_up(self) -> None:
-        """Check all required modules are initialised"""
-        errors = []
-        if self._atmosphere_model is None:
-            errors.append(
-                'Atmosphere model hasn\'t been set! Set with set_atmosphere_model("[name]", model_kwargs)'
-            )
-
-        if self.config.time_step is None:
-            errors.append("Time step hasn't been set!")
-
-        if self._simulation_method is None:
-            errors.append(
-                'Simulation method hasn\'t been set! Set with set_simulation_method("[name]")'
-            )
-        elif self._simulation_method not in self.available_sim_methods:
-            errors.append(
-                f"{self._simulation_method} is not an implemented simulation method! Must be one of: {list(self.available_sim_methods.keys())}"
-            )
-
-        if len(self.states) == 0 or len(self.times) == 0:
-            errors.append(
-                "Initial conditions not set! Set with set_initial_conditions(state, time)"
-            )
-
-        if errors:
-            raise NotImplementedError(" | ".join(errors))
-
-    @property
-    def time_step(self):
-        return self.config.time_step
-
-    @property
-    def dim(self):
-        return self.config.dimension
-
-    @property
-    def x1(self):
-        return [xt[0] for xt in self.states]
-
-    @property
-    def x2(self):
-        return [xt[1] for xt in self.states]
-
-    @property
-    def x3(self):
-        # assert (
-        #     self.dim >= 3
-        # ), "Attempted to access x3 coordinate from 2D simulator"
-        return [xt[2] for xt in self.states]
-
-    def gather_data(self) -> SimData:
-        """Generates a portable data object containing all the simulation data reqiured to save.
-
-        Returns:
-            SimData: pydantic data model containing both simulated data and config.
-        """
-        if self.dim == 2:
-            data = SimData(
-                x1=self.x1, x2=self.x2, times=self.times, sim_config=self.config
-            )
-        elif self.dim == 3:
-            data = SimData(
-                x1=self.x1,
-                x2=self.x2,
-                x3=self.x3,
-                times=self.times,
-                sim_config=self.config,
-            )
-        else:
-            raise Exception("Sim dimension is not 2 or 3!")
-        return data
-
-    def save_data(self, save_dir_path: str) -> Path:
-        """Saves simulation data to [save_dir_path] directory as defined in the SimData data model.
-
-        File name format: sim_data_[unix time in ms].json
-
-        Args:
-            save_dir_path (Path like): Data directory to save json file.
-        """
-        save_sim_data(self.gather_data(), dir_path_string=save_dir_path)
-
-
-def get_available_atmos_models() -> dict[str:Callable]:
-    """Find available atmosphere models in atmos.py
+def get_available_sim_methods() -> dict[str, type[Simulator]]:
+    """Python magic to find the names of implemented simulation methods.
 
     Returns:
-        dict[str, subclass(AtmosphereModel)]: Dictionary of {model name: subclass of AtmosphereModel}
+        dict[str, subclass(Simulator)]: a dictionary of `{name: method class}`
     """
-    full_list = getmembers(atmos, isclass)
-    # Atmosphere function factories have the __atmos__ attribute set to True.
-    # This is so this function doesn't get confused with other functions defined
-    # in atmos. This can be avoided by defining these functions with an _underscore
-    # at the beginning but this check makes this unnecessary.
-    full_list = [
-        cls
-        for cls in full_list
-        if issubclass(cls[1], AtmosphereModel) and cls[1] != AtmosphereModel
-    ]
-    return {i[1].name: i[1] for i in full_list}
+    return Simulator._methods
 
 
-def get_available_sim_methods() -> dict[str, str]:
-    """Python magic to find the names of implemented simulation methods marked with `@sim_method("[name]")`.
+def generate_sim_config(
+    sim_method: str,
+    atmos_model: str,
+    initial_state: npt.ArrayLike,
+    initial_time: float = 0.0,
+    time_step: float = 0.1,
+    sim_method_kwargs: dict | type[MethodKwargs] | None = None,
+    atmos_kwargs: dict | type[AtmosKwargs] | None = None,
+):
+    assert len(initial_state) % 2 == 0
 
-    Returns:
-        dict[str, str]: a dictionary of `{human readable name: method name}`"""
-    return {
-        getattr(Simulator, i)
-        .__sim_method_name__: getattr(Simulator, i)
-        .__name__
-        for i in dir(Simulator)
-        if hasattr(getattr(Simulator, i), "__sim_method_name__")
-    }
+    raise_for_invalid_sim_method(sim_method)
+    raise_for_invalid_atmos_model(atmos_model)
+
+    dimension: int = int(len(initial_state) / 2)
+    method_kwargs_model: type[MethodKwargs] = get_model_for_sim(sim_method)
+    atmos_kwargs_model: type[AtmosKwargs] = get_model_for_atmos(atmos_model)
+
+    if sim_method_kwargs is None:
+        # Use the defaults set by the data model
+        sim_method_kwargs = method_kwargs_model(
+            dimension=dimension, time_step=time_step
+        )
+    elif type(sim_method_kwargs) is dict:
+        # If a user supplies time_step in this dictionary, prefer it over the one supplied as an argument
+        if "time_step" in sim_method_kwargs:
+            time_step = sim_method_kwargs.pop("time_step")
+        sim_method_kwargs = method_kwargs_model(
+            dimension=dimension, time_step=time_step, **sim_method_kwargs
+        )
+    elif (
+        type(sim_method_kwargs) is not method_kwargs_model
+        and type(sim_method_kwargs) in get_available_sim_methods().values()
+    ):
+        raise ValueError(
+            f"Mismatched kwargs object provided. Expected kwargs for {sim_method}, got kwargs for {sim_method_kwargs.method_name}"
+        )
+    else:
+        raise ValueError(
+            "Simulation method kwargs are invalid. Must either be a dict, a MethodKwargs instance or None"
+        )
+
+    if atmos_kwargs is None:
+        # Use the defaults set by the data model
+        atmos_kwargs = atmos_kwargs_model()
+    elif type(atmos_kwargs) is dict:
+        atmos_kwargs = atmos_kwargs_model(**atmos_kwargs)
+    elif (
+        type(atmos_kwargs) is not atmos_kwargs_model
+        and type(atmos_kwargs) in get_available_atmos_models().values()
+    ):
+        raise ValueError(
+            f"Mismatched kwargs object provided. Expected kwargs for {atmos_model}, got kwargs for {atmos_kwargs.atmos_name}"
+        )
+    else:
+        raise ValueError(
+            "Atmosphere model kwargs are invalid. Must either be a dict, a AtmosKwargs instance or None"
+        )
+
+    config = SimConfig(
+        initial_state=initial_state,
+        initial_time=initial_time,
+        simulation_method=sim_method,
+        simulation_method_kwargs=sim_method_kwargs,
+        atmosphere_model=atmos_model,
+        atmosphere_model_kwargs=atmos_kwargs,
+    )
+    return config
+
+
+def run_with_config(
+    config: SimConfig,
+    steps: int | None = None,
+) -> Simulator:
+    sim = Simulator(config)
+    sim.run(steps=steps)
+    return sim
+
+
+def run(
+    sim_method: str,
+    atmos_model: str,
+    initial_state: npt.ArrayLike,
+    initial_time: float = 0.0,
+    time_step: float = 0.1,
+    sim_method_kwargs: dict | type[MethodKwargs] | None = None,
+    atmos_kwargs: dict | type[AtmosKwargs] | None = None,
+    steps: int | None = None,
+) -> Simulator:
+    config = generate_sim_config(
+        sim_method=sim_method,
+        atmos_model=atmos_model,
+        initial_state=initial_state,
+        initial_time=initial_time,
+        time_step=time_step,
+        sim_method_kwargs=sim_method_kwargs,
+        atmos_kwargs=atmos_kwargs,
+    )
+    sim = run_with_config(config, steps)
+    return sim
 
 
 if __name__ == "__main__":
     # TODO implement CLI
+    breakpoint()
     pass
