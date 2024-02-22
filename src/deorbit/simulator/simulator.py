@@ -222,31 +222,6 @@ class Simulator(ABC):
 
         print(f"Simulation finished in {elapsed_time:.5f} seconds")
 
-    # def check_set_up(self) -> None:
-    #     """Check all required modules are initialised"""
-    #     errors = []
-    #     if self._atmosphere_model is None:
-    #         errors.append(
-    #             'Atmosphere model hasn\'t been set! Set with set_atmosphere_model("[name]", model_kwargs)'
-    #         )
-
-    #     if self._simulation_method is None:
-    #         errors.append(
-    #             'Simulation method hasn\'t been set! Set with set_simulation_method("[name]")'
-    #         )
-    #     elif self._simulation_method not in self.available_sim_methods:
-    #         errors.append(
-    #             f"{self._simulation_method} is not an implemented simulation method! Must be one of: {list(self.available_sim_methods.keys())}"
-    #         )
-
-    #     if len(self.states) == 0 or len(self.times) == 0:
-    #         errors.append(
-    #             "Initial conditions not set! Set with set_initial_conditions(state, time)"
-    #         )
-
-    # if errors:
-    #     raise NotImplementedError(" | ".join(errors))
-
     @property
     def time_step(self):
         return self.sim_method_kwargs.time_step
