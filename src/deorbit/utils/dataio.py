@@ -1,9 +1,41 @@
 import json
 import os
+import pickle
+from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
 
 from deorbit.data_models.sim import SimData
+
+
+class DataIO(ABC):
+    @abstractmethod
+    def save(self, data: SimData, path) -> None: ...
+    
+    @abstractmethod
+    def load(self, path) -> SimData: ...
+    
+    
+class JSONIO(DataIO):
+    def save(self, data: SimData, path) -> None:
+        with open(path, "w") as f:
+            json.dump(data.model_dump_json(), f)
+           
+    def load(self, path) -> SimData:
+        with open(path) as f:
+            model = SimData.model_validate_json(json.load(f))
+            return model
+
+
+class PickleIO():
+    def save(self, data: SimData, path) -> None:
+        with open(path, "wb") as f:
+            pickle.dump(data, f)
+            
+    def load(self, path) -> SimData:
+        with open(path, "rb") as f:
+            model = pickle.load(f)
+            return model
 
 
 def save_sim_data(
@@ -30,8 +62,12 @@ def save_sim_data(
 
     path = _check_for_file(path)
 
-    with open(path, "w") as f:
-        json.dump(data.model_dump_json(), f)
+    if format == "json":
+        io = JSONIO()
+    elif format == "pickle":
+        io = PickleIO()
+        
+    io.save(data, path)
 
     return path
 
