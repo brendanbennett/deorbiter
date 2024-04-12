@@ -357,6 +357,8 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
             while not self.is_terminal(self.states[-1]):
                 self._step_state_adams_bashforth(function_buffer)
                 iters += 1
+                if len(self.states) > 3 and self.states[-1][0] < self.states[-2][0] and self.states[-2][0] > self.states[-3][0]:
+                    print(f"height = {np.linalg.norm(self.states[-1][:self.dim])}")
         else:
             for i in tqdm(range(steps)):
                 if self.is_terminal(self.states[-1]):
