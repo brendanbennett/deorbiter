@@ -230,54 +230,31 @@ class Simulator(ABC):
     def dim(self):
         return self.sim_method_kwargs.dimension
 
-    @property
-    def x1(self):
-        return [xt[0] for xt in self.states]
-
-    @property
-    def x2(self):
-        return [xt[1] for xt in self.states]
-
-    @property
-    def x3(self):
-        # assert (
-        #     self.dim >= 3
-        # ), "Attempted to access x3 coordinate from 2D simulator"
-        return [xt[2] for xt in self.states]
-
-    @property
-    def v1(self):
-        return [vt[0] for vt in self.states]
-
-    @property
-    def v2(self):
-        return [vt[1] for vt in self.states]
-
-    @property
-    def v3(self):
-        # assert (
-        #     self.dim >= 3
-        # ), "Attempted to access v3 coordinate from 2D simulator"
-        return [vt[2] for vt in self.states]
-
     def gather_data(self) -> SimData:
         """Generates a portable data object containing all the simulation data reqiured to save.
 
         Returns:
             SimData: pydantic data model containing both simulated data and config.
         """
+        states = np.array(self.states)
+        assert self.dim * 2 == states.shape[1]
+
         if self.dim == 2:
             data = SimData(
-                x1=self.x1, x2=self.x2, v1=self.v1, v2=self.v2, times=self.times
+                x1=states[:, 0],
+                x2=states[:, 1],
+                v1=states[:, 2],
+                v2=states[:, 3],
+                times=self.times,
             )
         elif self.dim == 3:
             data = SimData(
-                x1=self.x1,
-                x2=self.x2,
-                x3=self.x3,
-                v1=self.v1,
-                v2=self.v2,
-                v3=self.v3,
+                x1=states[:, 0],
+                x2=states[:, 1],
+                x3=states[:, 2],
+                v1=states[:, 3],
+                v2=states[:, 4],
+                v3=states[:, 5],
                 times=self.times,
             )
         else:
