@@ -292,9 +292,10 @@ class Simulator(ABC):
         Args:
             save_dir_path (Path like): Data directory to save json file.
         """
-        save_sim_data(
+        save_path = save_sim_data(
             self.gather_data(), dir_path_string=save_dir_path, format=format
         )
+        return save_path
 
 
 class EulerSimulator(Simulator, method_name="euler"):

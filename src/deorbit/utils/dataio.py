@@ -36,7 +36,7 @@ class JSONIO(DataIO):
 
 
 class PickleIO(DataIO):
-    name = "pickle"
+    name = "pkl"
     
     def save(self, data: SimData, path) -> None:
         with open(path, "wb") as f:
@@ -151,6 +151,9 @@ def _check_for_file(path: Path) -> Path:
 
 
 def load_sim_data(path: str) -> SimData:
-    with open(path) as f:
-        model = SimData.model_validate_json(json.load(f))
-        return model
+    path: Path = Path(path)
+    # format is defined by extension
+    io = formats[path.suffix[1:]]()
+    
+    sim_data = io.load(path)
+    return sim_data
