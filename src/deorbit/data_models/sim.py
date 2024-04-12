@@ -21,7 +21,10 @@ class SimData(BaseModel):
     x1: list[float]
     x2: list[float]
     x3: Optional[list[float]] = None  # Defaults to dim = 2
+    
+    v1: list[float]
+    v2: list[float]
+    v3: Optional[list[float]] = None
+    
     times: list[float]
-
-    # Metadata
-    sim_config: SimConfig
+    
