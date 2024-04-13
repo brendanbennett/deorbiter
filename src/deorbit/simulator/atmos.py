@@ -19,11 +19,10 @@ from deorbit.utils.constants import AIR_DENSITY_SEA_LEVEL, EARTH_RADIUS
 class AtmosphereModel(ABC):
     """Abstract base class for Atmosphere model implementations.
     Attributes:
-        name: abstract, str; must be set as a class variable in any subclass
+        kwargs (AtmosKwargs): A pydantic data model of model parameters
 
     Methods:
         density(state, time) -> float: abstract; must be implemented in any subclass
-        kwargs() -> AtmosKwargs: returns a pydantic data model of model parameters
     """
 
     _models = {}
