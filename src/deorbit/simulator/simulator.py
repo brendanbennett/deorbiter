@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from time import thread_time_ns
 from typing import Callable
+from datetime import datetime
 
 import numpy as np
 import numpy.typing as npt
@@ -104,6 +105,7 @@ class Simulator(ABC):
         self.times: list[float] = list()
         self._atmosphere_model: Callable = None
         self.sim_method_kwargs: MethodKwargs = config.simulation_method_kwargs
+        self.time_of_last_run = datetime.now()
 
         self.set_atmosphere_model(config.atmosphere_model_kwargs)
         self.set_initial_conditions(config.initial_state, config.initial_time)
@@ -114,9 +116,9 @@ class Simulator(ABC):
             SimConfig: Config object which can be used to recreate this simulation
         """
         assert len(self.states) > 0 and len(self.times) > 0
-        initial_values = list(self.states[0]), self.times[0]
         config = SimConfig(
-            initial_values=initial_values,
+            initial_state=list(self.states[0]),
+            initial_time=self.times[0],
             simulation_method_kwargs=self.sim_method_kwargs,
             atmosphere_model_kwargs=self._atmosphere_model.kwargs,
         )
@@ -208,6 +210,7 @@ class Simulator(ABC):
     def _run_method(self, steps: int | None) -> None: ...
 
     def run(self, steps: int = None):
+        self.time_of_last_run = datetime.now()
         start_time = thread_time_ns()
 
         # Run with selected simulation method
@@ -270,7 +273,11 @@ class Simulator(ABC):
             save_dir_path (Path like): Data directory to save json file.
         """
         save_path = save_sim_data(
-            self.gather_data(), dir_path_string=save_dir_path, format=format
+            self.gather_data(),
+            self.export_config(),
+            dir_path_string=save_dir_path,
+            format=format,
+            run_time=self.time_of_last_run,
         )
         return save_path
 
