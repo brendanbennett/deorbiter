@@ -25,17 +25,17 @@ class EulerKwargs(MethodKwargs):
 
 def get_model_for_sim(sim_method_name: str) -> type[MethodKwargs]:
     """Returns the correct kwargs model for the given simulation method
-    
+
     Args:
         sim_method_name (str): The name of the simulation method
-    
+
     Returns:
         type[MethodKwargs]: The kwargs model for the given simulation method
-    
+
     Raises:
         ValueError: If the simulation method has no supporting kwargs model
     """
-    
+
     for model in MethodKwargs.__subclasses__():
         if model.method_name == sim_method_name:
             return model
