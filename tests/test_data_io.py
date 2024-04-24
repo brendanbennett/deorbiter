@@ -1,11 +1,10 @@
-import pytest
 import numpy as np
+import pytest
+
+from deorbit.simulator import Simulator, generate_sim_config
 from deorbit.utils.constants import EARTH_RADIUS
-from deorbit.simulator import (
-    Simulator,
-    generate_sim_config,
-)
 from deorbit.utils.dataio import formats, load_sim_data
+
 
 @pytest.mark.parametrize("format", formats.keys())
 def test_save_simdata(tmpdir, format):
@@ -15,7 +14,7 @@ def test_save_simdata(tmpdir, format):
     sim.run(10)
     pre_save_data = sim.gather_data()
     save_path = sim.save_data(tmpdir, format)
-    
+
     loaded_data = load_sim_data(save_path)
-    
+
     assert pre_save_data == loaded_data

@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
+from datetime import datetime
 from pathlib import Path
 from time import thread_time_ns
 from typing import Callable
-from datetime import datetime
 
 import numpy as np
 import numpy.typing as npt
@@ -287,8 +287,7 @@ class EulerSimulator(Simulator, method_name="euler"):
         self._step_time()
         next_state = np.array(self.states[-1], dtype=float)
         next_state += (
-            self._objective_function(self.states[-1], self.times[-1])
-            * self.time_step
+            self._objective_function(self.states[-1], self.times[-1]) * self.time_step
         )
         self.states.append(next_state)
 
@@ -310,9 +309,7 @@ class EulerSimulator(Simulator, method_name="euler"):
             else:
                 iters = steps
 
-        print(
-            f"Ran {iters} iterations at time step of {self.time_step} seconds"
-        )
+        print(f"Ran {iters} iterations at time step of {self.time_step} seconds")
 
 
 class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
@@ -320,8 +317,7 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
         self._step_time()
         next_state = np.array(self.states[-1], dtype=float)
         next_state += (
-            self._objective_function(self.states[-1], self.times[-1])
-            * self.time_step
+            self._objective_function(self.states[-1], self.times[-1]) * self.time_step
         )
         self.states.append(next_state)
 
@@ -376,9 +372,7 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
             else:
                 iters = steps
 
-        print(
-            f"Ran {iters} iterations at time step of {self.time_step} seconds"
-        )
+        print(f"Ran {iters} iterations at time step of {self.time_step} seconds")
 
 
 class RK4Simulator(Simulator, method_name="RK4"):
@@ -420,9 +414,7 @@ class RK4Simulator(Simulator, method_name="RK4"):
             else:
                 iters = steps
 
-        print(
-            f"Ran {iters} iterations at time step of {self.time_step} seconds"
-        )
+        print(f"Ran {iters} iterations at time step of {self.time_step} seconds")
 
 
 def raise_for_invalid_sim_method(sim_method: str) -> None:
