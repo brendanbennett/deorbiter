@@ -7,7 +7,10 @@ This package requires `Python>=3.10`.
 For development purposes, you can install this package - after cloning to a local directory and navigating into the repository - with the command
 
 ```
+git clone git@github.com:ES98B-Mir-project-23/mir-orbiter.git
+cd mir-orbiter
 python -m pip install -e .[dev]
+pip install -r requirements.txt
 ```
 
 This will install the package in editable mode, allowing the package to be modified and changes to be applied immediately in the local environment.
