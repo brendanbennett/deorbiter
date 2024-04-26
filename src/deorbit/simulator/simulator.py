@@ -192,10 +192,21 @@ class Simulator(ABC):
         grav_accel = self._gravity_accel(state=state)
         # print(f"state {state} at time {time} has drag accel {np.linalg.norm(drag_accel)} \
         # and gravity accel {np.linalg.norm(grav_accel)}")
-        if self.noise_state:
-            return drag_accel + grav_accel + ((drag_accel + grav_accel)*np.random.normal(0, 0.1))
+        if self.noise_type == 'Gaussian':
+            #gaussian noise accounting for random changes throughout the deorbit process
+            return drag_accel + grav_accel + ((drag_accel + grav_accel)*np.random.normal(0, self.noise_strength))
         
-        else:
+        elif self.noise_type == 'Impulse':
+            #impulsive noise akin to one off large scale collisions within the atmosphere
+            #could make chance of collison/collision frequency a parameter to be inputted by the user??
+            collision_chance = np.random.uniform(0, 10000)
+            if collision_chance < 1:
+                #would want this to return a random acceleration?? left as multiplicative noise for now
+                return drag_accel + grav_accel + (drag_accel + grav_accel)*self.noise_strength
+            else:
+                return drag_accel + grav_accel
+        
+        else: 
             return drag_accel + grav_accel
 
     def _step_time(self) -> None:
@@ -238,8 +249,12 @@ class Simulator(ABC):
         return self.sim_method_kwargs.dimension
     
     @property
-    def noise_state(self):
-        return self.sim_method_kwargs.noise_state
+    def noise_strength(self):
+        return self.sim_method_kwargs.noise_strength
+    
+    @property
+    def noise_type(self):
+        return self.sim_method_kwargs.noise_type
 
     def gather_data(self) -> SimData:
         """Generates a portable data object containing all the simulation data reqiured to save.
@@ -449,7 +464,8 @@ def generate_sim_config(
     initial_state: npt.ArrayLike,
     initial_time: float = 0.0,
     time_step: float = 0.1,
-    noise_state: bool = False,
+    noise_strength: float = 0.0,
+    noise_type: str = 'None',
     sim_method_kwargs: dict | type[MethodKwargs] | None = None,
     atmos_kwargs: dict | type[AtmosKwargs] | None = None,
 ):
@@ -465,16 +481,18 @@ def generate_sim_config(
     if sim_method_kwargs is None:
         # Use the defaults set by the data model
         sim_method_kwargs = method_kwargs_model(
-            dimension=dimension, time_step=time_step, noise_state=noise_state
+            dimension=dimension, time_step=time_step, noise_strength=noise_strength, noise_type=noise_type
         )
     elif type(sim_method_kwargs) is dict:
         # If a user supplies time_step in this dictionary, prefer it over the one supplied as an argument
         if "time_step" in sim_method_kwargs:
             time_step = sim_method_kwargs.pop("time_step")
-        if "noise_state" in sim_method_kwargs:
-            noise_state = sim_method_kwargs.pop("noise_state")
+        if "noise_strength" in sim_method_kwargs:
+            noise_strength = sim_method_kwargs.pop("noise_strength")
+        if "noise_type" in sim_method_kwargs:
+            noise_type = sim_method_kwargs.pop("noise_type")
         sim_method_kwargs = method_kwargs_model(
-            dimension=dimension, time_step=time_step, noise_state=noise_state, **sim_method_kwargs
+            dimension=dimension, time_step=time_step, noise_strength=noise_strength, noise_type = noise_type**sim_method_kwargs
         )
     elif (
         type(sim_method_kwargs) is not method_kwargs_model
@@ -531,10 +549,12 @@ def run(
     initial_state: npt.ArrayLike,
     initial_time: float = 0.0,
     time_step: float = 0.1,
+    noise_strength: float = 0.0,
+    noise_type: str='None',
     sim_method_kwargs: dict | type[MethodKwargs] | None = None,
     atmos_kwargs: dict | type[AtmosKwargs] | None = None,
     steps: int | None = None,
-    noise_state: bool = False,
+
 ) -> Simulator:
     config = generate_sim_config(
         sim_method=sim_method,
@@ -542,7 +562,8 @@ def run(
         initial_state=initial_state,
         initial_time=initial_time,
         time_step=time_step, 
-        noise_state = noise_state,
+        noise_strength = noise_strength,
+        noise_type = noise_type,
         sim_method_kwargs=sim_method_kwargs,
         atmos_kwargs=atmos_kwargs,       
     )
