@@ -4,6 +4,16 @@ from deorbit.utils.dataio import load_sim_data, load_sim_config
 from deorbit.data_models.sim import SimConfig
 from deorbit.utils.constants import EARTH_RADIUS, GM_EARTH
 
+# Runs in about 70s
+sim = deorbit.simulator.run(
+    "adams_bashforth",
+    "coesa_atmos_fast",
+    initial_state=np.array((deorbit.constants.EARTH_RADIUS + 150000, 0, 0, 7820)),
+    time_step=0.1,
+)
+
+print(type(sim))
+
 # Load saved simulation data and configuration
 save_path = "eg/simulation_output.pkl"  # Path where simulation data is saved
 sim_data = load_sim_data(save_path)
