@@ -1,4 +1,4 @@
-def compute_jacobian(self, state, dt):
+def compute_jacobian(self, state, dt):#Acutally just ignore this def, must have wrote it drunk
     # Extract position and velocity from the state vector
     x, y, vx, vy = state
     jacobian = np.zeros((4, 4))
