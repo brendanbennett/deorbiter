@@ -192,7 +192,11 @@ class Simulator(ABC):
         grav_accel = self._gravity_accel(state=state)
         # print(f"state {state} at time {time} has drag accel {np.linalg.norm(drag_accel)} \
         # and gravity accel {np.linalg.norm(grav_accel)}")
-        return drag_accel + grav_accel
+        if self.noise_state:
+            return drag_accel + grav_accel + ((drag_accel + grav_accel)*np.random.normal(0, 0.1))
+        
+        else:
+            return drag_accel + grav_accel
 
     def _step_time(self) -> None:
         self.times.append(self.times[-1] + self.time_step)
@@ -232,6 +236,10 @@ class Simulator(ABC):
     @property
     def dim(self):
         return self.sim_method_kwargs.dimension
+    
+    @property
+    def noise_state(self):
+        return self.sim_method_kwargs.noise_state
 
     def gather_data(self) -> SimData:
         """Generates a portable data object containing all the simulation data reqiured to save.
@@ -441,6 +449,7 @@ def generate_sim_config(
     initial_state: npt.ArrayLike,
     initial_time: float = 0.0,
     time_step: float = 0.1,
+    noise_state: bool = False,
     sim_method_kwargs: dict | type[MethodKwargs] | None = None,
     atmos_kwargs: dict | type[AtmosKwargs] | None = None,
 ):
@@ -456,14 +465,16 @@ def generate_sim_config(
     if sim_method_kwargs is None:
         # Use the defaults set by the data model
         sim_method_kwargs = method_kwargs_model(
-            dimension=dimension, time_step=time_step
+            dimension=dimension, time_step=time_step, noise_state=noise_state
         )
     elif type(sim_method_kwargs) is dict:
         # If a user supplies time_step in this dictionary, prefer it over the one supplied as an argument
         if "time_step" in sim_method_kwargs:
             time_step = sim_method_kwargs.pop("time_step")
+        if "noise_state" in sim_method_kwargs:
+            noise_state = sim_method_kwargs.pop("noise_state")
         sim_method_kwargs = method_kwargs_model(
-            dimension=dimension, time_step=time_step, **sim_method_kwargs
+            dimension=dimension, time_step=time_step, noise_state=noise_state, **sim_method_kwargs
         )
     elif (
         type(sim_method_kwargs) is not method_kwargs_model
@@ -523,15 +534,17 @@ def run(
     sim_method_kwargs: dict | type[MethodKwargs] | None = None,
     atmos_kwargs: dict | type[AtmosKwargs] | None = None,
     steps: int | None = None,
+    noise_state: bool = False,
 ) -> Simulator:
     config = generate_sim_config(
         sim_method=sim_method,
         atmos_model=atmos_model,
         initial_state=initial_state,
         initial_time=initial_time,
-        time_step=time_step,
+        time_step=time_step, 
+        noise_state = noise_state,
         sim_method_kwargs=sim_method_kwargs,
-        atmos_kwargs=atmos_kwargs,
+        atmos_kwargs=atmos_kwargs,       
     )
     sim = run_with_config(config, steps)
     return sim
