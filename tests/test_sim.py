@@ -106,6 +106,8 @@ def test_gaussian_noise(noise_type):
         
         
 def test_impulse_noise(monkeypatch):
+    # The random function is replaced with a function that always returns 0, 
+    # so 'collision' always occurs.
     with monkeypatch.context() as m:
         m.setattr(np.random, "random", lambda *args: 0)
         initial_state = np.array((EARTH_RADIUS + 100000, 0, 0, 8000))
