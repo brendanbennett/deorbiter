@@ -187,7 +187,7 @@ class Simulator(ABC):
         )
         return accel
 
-    def _calculate_accel(self, state: np.ndarray, time: float) -> float:
+    def _calculate_accel(self, state: np.ndarray, time: float) -> np.ndarray:
         drag_accel = self._drag_accel(state=state, time=time)
         grav_accel = self._gravity_accel(state=state)
         # print(f"state {state} at time {time} has drag accel {np.linalg.norm(drag_accel)} \
@@ -199,8 +199,8 @@ class Simulator(ABC):
         elif self.noise_type == 'impulse':
             # impulsive noise akin to one off large scale collisions within the atmosphere
             # could make chance of collison/collision frequency a parameter to be inputted by the user??
-            collision_chance = np.random.uniform(0, 10000)
-            if collision_chance < 1:
+            collision_chance = np.random.random()
+            if collision_chance < 1e-5:
                 # would want this to return a random acceleration?? left as multiplicative noise for now
                 return drag_accel + grav_accel + (drag_accel + grav_accel)*self.noise_strength
             else:
