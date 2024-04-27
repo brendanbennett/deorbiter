@@ -77,3 +77,52 @@ def test_raise_for_invalid_sim_method():
     )
     with pytest.raises(ValueError):
         Simulator(config)
+
+
+@pytest.mark.parametrize("noise_type", ["gaussian", None])
+def test_gaussian_noise(noise_type):
+    initial_state = np.array((EARTH_RADIUS + 100000, 0, 0, 8000))
+    config = generate_sim_config("RK4", "coesa_atmos_fast", initial_state)
+    sim = Simulator(config)
+    sim._calculate_accel(sim.states[0], 0)
+
+    random_config = generate_sim_config(
+        "RK4",
+        "coesa_atmos_fast",
+        initial_state,
+        noise_strength=100,
+        noise_type=noise_type,
+    )
+    random_sim = Simulator(random_config)
+
+    if noise_type is None:
+        assert np.all(sim._calculate_accel(
+            sim.states[0], 0
+        ) == random_sim._calculate_accel(random_sim.states[0], 0))
+    else:
+        assert np.all(sim._calculate_accel(
+            sim.states[0], 0
+        ) != random_sim._calculate_accel(random_sim.states[0], 0))
+        
+        
+def test_impulse_noise(monkeypatch):
+    with monkeypatch.context() as m:
+        m.setattr(np.random, "random", lambda *args: 0)
+        initial_state = np.array((EARTH_RADIUS + 100000, 0, 0, 8000))
+        config = generate_sim_config("RK4", "coesa_atmos_fast", initial_state)
+        sim = Simulator(config)
+        sim._calculate_accel(sim.states[0], 0)
+
+        random_config = generate_sim_config(
+            "RK4",
+            "coesa_atmos_fast",
+            initial_state,
+            noise_strength=100,
+            noise_type="impulse",
+        )
+        random_sim = Simulator(random_config)
+        
+        assert np.all(sim._calculate_accel(
+            sim.states[0], 0
+        ) != random_sim._calculate_accel(random_sim.states[0], 0))
+
