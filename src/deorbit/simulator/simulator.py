@@ -192,16 +192,16 @@ class Simulator(ABC):
         grav_accel = self._gravity_accel(state=state)
         # print(f"state {state} at time {time} has drag accel {np.linalg.norm(drag_accel)} \
         # and gravity accel {np.linalg.norm(grav_accel)}")
-        if self.noise_type == 'Gaussian':
-            #gaussian noise accounting for random changes throughout the deorbit process
+        if self.noise_type == 'gaussian':
+            # gaussian noise accounting for random changes throughout the deorbit process
             return drag_accel + grav_accel + ((drag_accel + grav_accel)*np.random.normal(0, self.noise_strength))
         
-        elif self.noise_type == 'Impulse':
-            #impulsive noise akin to one off large scale collisions within the atmosphere
-            #could make chance of collison/collision frequency a parameter to be inputted by the user??
+        elif self.noise_type == 'impulse':
+            # impulsive noise akin to one off large scale collisions within the atmosphere
+            # could make chance of collison/collision frequency a parameter to be inputted by the user??
             collision_chance = np.random.uniform(0, 10000)
             if collision_chance < 1:
-                #would want this to return a random acceleration?? left as multiplicative noise for now
+                # would want this to return a random acceleration?? left as multiplicative noise for now
                 return drag_accel + grav_accel + (drag_accel + grav_accel)*self.noise_strength
             else:
                 return drag_accel + grav_accel
@@ -465,7 +465,7 @@ def generate_sim_config(
     initial_time: float = 0.0,
     time_step: float = 0.1,
     noise_strength: float = 0.0,
-    noise_type: str = 'None',
+    noise_type: str | None = None,
     sim_method_kwargs: dict | type[MethodKwargs] | None = None,
     atmos_kwargs: dict | type[AtmosKwargs] | None = None,
 ):
@@ -550,7 +550,7 @@ def run(
     initial_time: float = 0.0,
     time_step: float = 0.1,
     noise_strength: float = 0.0,
-    noise_type: str='None',
+    noise_type: str | None = None,
     sim_method_kwargs: dict | type[MethodKwargs] | None = None,
     atmos_kwargs: dict | type[AtmosKwargs] | None = None,
     steps: int | None = None,

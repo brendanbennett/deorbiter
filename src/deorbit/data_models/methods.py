@@ -9,7 +9,7 @@ class MethodKwargs(BaseModel):
     dimension: int = 2
     time_step: float
     noise_strength: float
-    noise_type: str
+    noise_type: str | None
 
 
 # Children of MethodKwargs should have usable defaults for every attribute
