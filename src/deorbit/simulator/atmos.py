@@ -13,6 +13,7 @@ from deorbit.data_models.atmos import (
     CoesaKwargs,
     IcaoKwargs,
     SimpleAtmosKwargs,
+    ZeroAtmosKwargs
 )
 from deorbit.utils.constants import AIR_DENSITY_SEA_LEVEL, EARTH_RADIUS
 
@@ -62,14 +63,25 @@ class AtmosphereModel(ABC):
         densities = [self.density(s, 0) for s in state_samples]
         ax.plot(densities, heights, label=label)
         return fig, ax
+    
+
+class ZeroAtmos(AtmosphereModel, model_name="zero_atmos"):
+    """Generate zero atmospheric model
+
+    Methods:
+        density(state: np.ndarray, time: float) -> float: Density function taking state and time as input
+        model_kwargs() -> dict: Returns model parameters
+    """
+
+    def __init__(self, kwargs: ZeroAtmosKwargs) -> None:
+        self.kwargs: ZeroAtmosKwargs = kwargs
+
+    def density(self, state: np.ndarray, time: float) -> float:
+        return 0
 
 
 class SimpleAtmos(AtmosphereModel, model_name="simple_atmos"):
     """Generate simple atmospheric model
-
-    Attributes:
-        earth_radius (float, optional): Earth's radius in metres. Defaults to EARTH_RADIUS.
-        surf_density (float, optional): Air density at Earth's surface in kgm^-3. Defaults to AIR_DENSITY_SEA_LEVEL.
 
     Methods:
         density(state: np.ndarray, time: float) -> float: Density function taking state and time as input

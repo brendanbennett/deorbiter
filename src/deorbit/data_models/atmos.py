@@ -32,6 +32,10 @@ class SimpleAtmosKwargs(AtmosKwargs):
 class IcaoKwargs(AtmosKwargs):
     atmos_name = "icao_standard_atmos"
     earth_radius: float = EARTH_RADIUS
+    
+    
+class ZeroAtmosKwargs(AtmosKwargs):
+    atmos_name = "zero_atmos"
 
 
 def get_model_for_atmos(atmos_model_name: str) -> type[AtmosKwargs]:
