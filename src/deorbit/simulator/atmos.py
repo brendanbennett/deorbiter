@@ -50,15 +50,18 @@ class AtmosphereModel(ABC):
     @abstractmethod
     def density(self, state: np.ndarray, time: float) -> float: ...
 
-    def visualize(
-        self, height_bounds_meters: tuple[float, float], num_points: int = 100
+    def plot(
+        self, height_bounds_meters: tuple[float, float], num_points: int = 100, ax: plt.Axes = None, label: str = None
     ) -> None:
-        fig, ax = plt.subplots()
+        if ax is None:
+            fig, ax = plt.subplots()
+        else:
+            fig = ax.get_figure()
         heights = np.linspace(*height_bounds_meters, num_points)
         state_samples = [(0, EARTH_RADIUS + h, 0, 0) for h in heights]
         densities = [self.density(s, 0) for s in state_samples]
-        ax.plot(densities, heights)
-        plt.show()
+        ax.plot(densities, heights, label=label)
+        return fig, ax
 
 
 class SimpleAtmos(AtmosphereModel, model_name="simple_atmos"):
