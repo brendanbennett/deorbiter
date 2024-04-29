@@ -316,7 +316,7 @@ class EulerSimulator(Simulator, method_name="euler"):
 
     def _run_method(self, steps: int | None) -> None:
         """Simple forward euler integration technique"""
-        print("Running simulation with Euler integrator")
+        print(f"Running simulation with Euler integrator with {self.noise_type} noise")
         # Boilerplate code for stepping the simulation
         if steps is None:
             iters = 0
@@ -365,7 +365,7 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
         This contrasts with the Runge-Kutta methods which take intermediatesamples between time steps.
         This allows buffering of previous calls to the right-hand-side function of the ODE which is
         fairly expensive."""
-        print("Running simulation with Two-step Adams-Bashforth integrator")
+        print(f"Running simulation with Two-step Adams-Bashforth integrator with {self.noise_type} noise")
         function_buffer = list()
         iters = 0
         # Initialise function buffer with f(x0, t0) and f(x1, t1)
@@ -448,6 +448,15 @@ def raise_for_invalid_sim_method(sim_method: str) -> None:
             f"Simulation method {sim_method} is not supported. Supported methods are: {available_methods}"
         )
 
+def raise_for_invalid_noise_type(noise_type: str) -> None:
+    """Raises ValueError if the given type of noise is not defined"""
+    available_noise_types = ['gaussian', 'impulse']
+    if noise_type not in available_noise_types:
+        raise ValueError(
+            f"Noise type {noise_type} is not supported. Supported methods are: {available_noise_types}"
+        )
+
+
 
 def get_available_sim_methods() -> dict[str, type[Simulator]]:
     """Python magic to find the names of implemented simulation methods.
@@ -473,6 +482,7 @@ def generate_sim_config(
 
     raise_for_invalid_sim_method(sim_method)
     raise_for_invalid_atmos_model(atmos_model)
+    raise_for_invalid_noise_type(noise_type)
 
     dimension: int = int(len(initial_state) / 2)
     method_kwargs_model: type[MethodKwargs] = get_model_for_sim(sim_method)
