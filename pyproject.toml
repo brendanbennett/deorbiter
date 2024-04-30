@@ -24,6 +24,7 @@ dependencies = [
     "pydantic",
     "scipy",
     "tqdm",
+    "ipympl",
 ]
 
 [tool.setuptools.dynamic]
