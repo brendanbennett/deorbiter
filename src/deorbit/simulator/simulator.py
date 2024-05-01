@@ -118,14 +118,15 @@ class Simulator(ABC):
         self._atmosphere_model = None
         self.sim_method_kwargs = config.simulation_method_kwargs
         self.time_of_last_run = datetime.now()
-        self.Jacobian = None  # Placeholder for the Jacobian matrix
+        self.Jacobian = []  # Placeholder for the Jacobian matrix
 
         self.set_atmosphere_model(config.atmosphere_model_kwargs)
         self.set_initial_conditions(config.initial_state, config.initial_time)
 
     def compute_jacobian(self, state):
         """ Computes the Jacobian matrix for the state transition function at the given state. """
-        x, y, vx, vy = state[:self.dim], state[self.dim:2*self.dim]
+        x, y = state[:self.dim]
+        vx, vy = state[self.dim:]
         jacobian = np.zeros((4, 4))
         
         # Fill in the derivatives for position update
@@ -141,8 +142,6 @@ class Simulator(ABC):
         drag_coeff = -0.5 * MEAN_DRAG_COEFF * MEAN_XSECTIONAL_AREA * rho / SATELLITE_MASS
         speed = np.linalg.norm([vx, vy])
         jacobian[2:4, 2:4] = (np.eye(2) - drag_coeff * speed * np.outer([vx, vy], [vx, vy])) * self.time_step
-        
-        self.Jacobian = jacobian
         return jacobian
 
 
@@ -285,6 +284,7 @@ class Simulator(ABC):
                 v1=states[:, 2],
                 v2=states[:, 3],
                 times=self.times,
+                Jacobian = self.Jacobian,
             )
         elif self.dim == 3:
             data = SimData(
@@ -295,6 +295,7 @@ class Simulator(ABC):
                 v2=states[:, 4],
                 v3=states[:, 5],
                 times=self.times,
+                Jacobian = self.Jacobian
             )
         else:
             raise Exception("Sim dimension is not 2 or 3!")
@@ -326,7 +327,7 @@ class EulerSimulator(Simulator, method_name="euler"):
         next_state = current_state + self._objective_function(current_state, self.times[-1]) * dt
         
         # Update the Jacobian as well for use in EKF
-        self.compute_jacobian(current_state)
+        self.Jacobian.append(self.compute_jacobian(current_state))
         
         # Saving the new state
         self.states.append(next_state)
@@ -356,6 +357,7 @@ class EulerSimulator(Simulator, method_name="euler"):
 class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
     def _step_state_euler(self) -> None:
         self._step_time()
+        self.Jacobian.append(self.compute_jacobian(self.states[-1]))
         next_state = np.array(self.states[-1], dtype=float)
         next_state += (
             self._objective_function(self.states[-1], self.times[-1]) * self.time_step
@@ -374,6 +376,7 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
         self._step_time()
         buffer.append(self._objective_function(next_state, self.times[-1]))
         del buffer[0]
+        self.Jacobian.append(self.compute_jacobian(self.states[-1]))
         self.states.append(next_state)
 
     def _run_method(self, steps: int | None) -> None:

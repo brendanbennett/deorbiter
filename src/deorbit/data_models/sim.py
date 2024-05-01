@@ -1,5 +1,5 @@
 from typing import Optional
-
+import numpy as np
 from pydantic import BaseModel, SerializeAsAny
 
 from deorbit.data_models.atmos import AtmosKwargs
@@ -29,3 +29,5 @@ class SimData(BaseModel):
     v3: Optional[list[float]] = None
 
     times: list[float]
+
+   # Jacobian: list[np.ndarray]

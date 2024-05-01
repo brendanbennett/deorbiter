@@ -1,12 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import deorbit
 from deorbit.utils.dataio import load_sim_data, load_sim_config
 from deorbit.data_models.sim import SimConfig
 from deorbit.utils.constants import EARTH_RADIUS, GM_EARTH
 
-# Runs in about 70s
+# Runs in about 70s - ADAMS BASHFORth
+#EULER TAKES LONGER
 sim = deorbit.simulator.run(
-    "adams_bashforth",
+    "euler",
     "coesa_atmos_fast",
     initial_state=np.array((deorbit.constants.EARTH_RADIUS + 150000, 0, 0, 7820)),
     time_step=0.1,
@@ -15,7 +17,7 @@ sim = deorbit.simulator.run(
 print(type(sim))
 
 # Load saved simulation data and configuration
-save_path = "eg/simulation_output.pkl"  # Path where simulation data is saved
+save_path = sim.save_data("eg/", format="pkl")
 sim_data = load_sim_data(save_path)
 sim_config: SimConfig = load_sim_config(save_path)
 
