@@ -8,7 +8,7 @@ class MethodKwargs(BaseModel):
     # By default, our simulation is 2 dimensional
     dimension: int = 2
     time_step: float
-    noise_strength: float = 0.0
+    noise_strength: list[float] = [0.0]
     noise_type: list[str] | None = None
 
 

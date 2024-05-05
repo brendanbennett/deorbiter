@@ -107,6 +107,7 @@ class Simulator(ABC):
         self._atmosphere_model: Callable = None
         self.sim_method_kwargs: MethodKwargs = config.simulation_method_kwargs
         self.time_of_last_run = datetime.now()
+        self._noise_type = None
 
         self.set_atmosphere_model(config.atmosphere_model_kwargs)
         self.set_initial_conditions(config.initial_state, config.initial_time)
@@ -193,33 +194,26 @@ class Simulator(ABC):
         grav_accel = self._gravity_accel(state=state)
         # print(f"state {state} at time {time} has drag accel {np.linalg.norm(drag_accel)} \
         # and gravity accel {np.linalg.norm(grav_accel)}")
-        if self.noise_type == "gaussian":
+        if self.noise_type is None:
+            return drag_accel + grav_accel
+
+        noise_accel = 0
+        if "gaussian" in self.noise_type:
             # gaussian noise accounting for random changes throughout the deorbit process
-            return (
-                drag_accel
-                + grav_accel
-                + (
-                    (drag_accel + grav_accel)
-                    * np.random.normal(0, self.noise_strength)
-                )
+            noise_accel += np.linalg.norm(drag_accel + grav_accel) * np.random.normal(
+                0, self.noise_type["gaussian"], size=2
             )
 
-        elif self.noise_type == "impulse":
+        if "impulse" in self.noise_type:
             # impulsive noise akin to one off large scale collisions within the atmosphere
             # could make chance of collison/collision frequency a parameter to be inputted by the user??
             collision_chance = np.random.random()
             if collision_chance < 1e-5:
-                # would want this to return a random acceleration?? left as multiplicative noise for now
-                return (
-                    drag_accel
-                    + grav_accel
-                    + (drag_accel + grav_accel) * self.noise_strength
-                )
-            else:
-                return drag_accel + grav_accel
-
-        else:
-            return drag_accel + grav_accel
+                # Impulse in a random direction
+                direction = np.random.uniform(0, 2 * np.pi)
+                direction = np.array([np.cos(direction), np.sin(direction)])
+                noise_accel += direction * self.noise_type["impulse"]
+        return drag_accel + grav_accel + noise_accel
 
     def _step_time(self) -> None:
         self.times.append(self.times[-1] + self.time_step)
@@ -261,12 +255,22 @@ class Simulator(ABC):
         return self.sim_method_kwargs.dimension
 
     @property
-    def noise_strength(self):
-        return self.sim_method_kwargs.noise_strength
+    def noise_type(self) -> dict[str, float]:
+        """Returns a dictionary of noise types and their strengths. Empty dict if no noise is present.
 
-    @property
-    def noise_type(self):
-        return self.sim_method_kwargs.noise_type
+        Returns:
+            dict[str, float]: Dictionary of noise types and their strengths.
+        """
+        if self._noise_type is None:
+            if self.sim_method_kwargs.noise_type is None:
+                self._noise_type = dict()
+            self._noise_type = dict(
+                zip(
+                    self.sim_method_kwargs.noise_type,
+                    self.sim_method_kwargs.noise_strength,
+                )
+            )
+        return self._noise_type
 
     def gather_data(self) -> SimData:
         """Generates a portable data object containing all the simulation data reqiured to save.
@@ -322,16 +326,13 @@ class EulerSimulator(Simulator, method_name="euler"):
         self._step_time()
         next_state = np.array(self.states[-1], dtype=float)
         next_state += (
-            self._objective_function(self.states[-1], self.times[-1])
-            * self.time_step
+            self._objective_function(self.states[-1], self.times[-1]) * self.time_step
         )
         self.states.append(next_state)
 
     def _run_method(self, steps: int | None) -> None:
         """Simple forward euler integration technique"""
-        print(
-            f"Running simulation with Euler integrator with {self.noise_type} noise"
-        )
+        print(f"Running simulation with Euler integrator with {self.noise_type} noise")
         # Boilerplate code for stepping the simulation
         if steps is None:
             iters = 0
@@ -347,9 +348,7 @@ class EulerSimulator(Simulator, method_name="euler"):
             else:
                 iters = steps
 
-        print(
-            f"Ran {iters} iterations at time step of {self.time_step} seconds"
-        )
+        print(f"Ran {iters} iterations at time step of {self.time_step} seconds")
 
 
 class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
@@ -357,8 +356,7 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
         self._step_time()
         next_state = np.array(self.states[-1], dtype=float)
         next_state += (
-            self._objective_function(self.states[-1], self.times[-1])
-            * self.time_step
+            self._objective_function(self.states[-1], self.times[-1]) * self.time_step
         )
         self.states.append(next_state)
 
@@ -415,9 +413,7 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
             else:
                 iters = steps
 
-        print(
-            f"Ran {iters} iterations at time step of {self.time_step} seconds"
-        )
+        print(f"Ran {iters} iterations at time step of {self.time_step} seconds")
 
 
 class RK4Simulator(Simulator, method_name="RK4"):
@@ -459,9 +455,7 @@ class RK4Simulator(Simulator, method_name="RK4"):
             else:
                 iters = steps
 
-        print(
-            f"Ran {iters} iterations at time step of {self.time_step} seconds"
-        )
+        print(f"Ran {iters} iterations at time step of {self.time_step} seconds")
 
 
 def raise_for_invalid_sim_method(sim_method: str) -> None:
@@ -471,6 +465,7 @@ def raise_for_invalid_sim_method(sim_method: str) -> None:
         raise ValueError(
             f"Simulation method {sim_method} is not supported. Supported methods are: {available_methods}"
         )
+
 
 def raise_for_invalid_noise_type(noise_type: str | list[str] | None) -> None:
     """Raises ValueError if the given type of noise (or list of noise types) is not defined"""
@@ -598,6 +593,7 @@ def run_with_config(
     sim = Simulator(config)
     sim.run(steps=steps)
     return sim
+
 
 # We want to give type hints for providing multiple noise types and strengths as lists
 @overload
