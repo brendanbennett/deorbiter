@@ -472,10 +472,13 @@ def raise_for_invalid_sim_method(sim_method: str) -> None:
             f"Simulation method {sim_method} is not supported. Supported methods are: {available_methods}"
         )
 
-
-def raise_for_invalid_noise_type(noise_type: str) -> None:
-    """Raises ValueError if the given type of noise is not defined"""
-    if noise_type not in Simulator._available_noise_types:
+def raise_for_invalid_noise_type(noise_type: str | list[str] | None) -> None:
+    """Raises ValueError if the given type of noise (or list of noise types) is not defined"""
+    if noise_type is None:
+        return
+    if isinstance(noise_type, str):
+        noise_type = [noise_type]
+    if not set(noise_type) <= set(Simulator._available_noise_types):
         raise ValueError(
             f"Noise type {noise_type} is not supported. Supported methods are: {Simulator._available_noise_types=}"
         )
