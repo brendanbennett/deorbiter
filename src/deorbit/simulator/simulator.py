@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
 from time import thread_time_ns
-from typing import Callable
+from typing import Callable, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -59,6 +59,7 @@ class Simulator(ABC):
     """
 
     _methods: dict = {}
+    _available_noise_types = ["gaussian", "impulse"]
 
     def __init_subclass__(cls, method_name: str = None, **kwargs):
         # This special method is called when a _subclass_ is defined in the code.
@@ -192,21 +193,32 @@ class Simulator(ABC):
         grav_accel = self._gravity_accel(state=state)
         # print(f"state {state} at time {time} has drag accel {np.linalg.norm(drag_accel)} \
         # and gravity accel {np.linalg.norm(grav_accel)}")
-        if self.noise_type == 'gaussian':
+        if self.noise_type == "gaussian":
             # gaussian noise accounting for random changes throughout the deorbit process
-            return drag_accel + grav_accel + ((drag_accel + grav_accel)*np.random.normal(0, self.noise_strength))
-        
-        elif self.noise_type == 'impulse':
+            return (
+                drag_accel
+                + grav_accel
+                + (
+                    (drag_accel + grav_accel)
+                    * np.random.normal(0, self.noise_strength)
+                )
+            )
+
+        elif self.noise_type == "impulse":
             # impulsive noise akin to one off large scale collisions within the atmosphere
             # could make chance of collison/collision frequency a parameter to be inputted by the user??
             collision_chance = np.random.random()
             if collision_chance < 1e-5:
                 # would want this to return a random acceleration?? left as multiplicative noise for now
-                return drag_accel + grav_accel + (drag_accel + grav_accel)*self.noise_strength
+                return (
+                    drag_accel
+                    + grav_accel
+                    + (drag_accel + grav_accel) * self.noise_strength
+                )
             else:
                 return drag_accel + grav_accel
-        
-        else: 
+
+        else:
             return drag_accel + grav_accel
 
     def _step_time(self) -> None:
@@ -247,11 +259,11 @@ class Simulator(ABC):
     @property
     def dim(self):
         return self.sim_method_kwargs.dimension
-    
+
     @property
     def noise_strength(self):
         return self.sim_method_kwargs.noise_strength
-    
+
     @property
     def noise_type(self):
         return self.sim_method_kwargs.noise_type
@@ -310,13 +322,16 @@ class EulerSimulator(Simulator, method_name="euler"):
         self._step_time()
         next_state = np.array(self.states[-1], dtype=float)
         next_state += (
-            self._objective_function(self.states[-1], self.times[-1]) * self.time_step
+            self._objective_function(self.states[-1], self.times[-1])
+            * self.time_step
         )
         self.states.append(next_state)
 
     def _run_method(self, steps: int | None) -> None:
         """Simple forward euler integration technique"""
-        print(f"Running simulation with Euler integrator with {self.noise_type} noise")
+        print(
+            f"Running simulation with Euler integrator with {self.noise_type} noise"
+        )
         # Boilerplate code for stepping the simulation
         if steps is None:
             iters = 0
@@ -332,7 +347,9 @@ class EulerSimulator(Simulator, method_name="euler"):
             else:
                 iters = steps
 
-        print(f"Ran {iters} iterations at time step of {self.time_step} seconds")
+        print(
+            f"Ran {iters} iterations at time step of {self.time_step} seconds"
+        )
 
 
 class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
@@ -340,7 +357,8 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
         self._step_time()
         next_state = np.array(self.states[-1], dtype=float)
         next_state += (
-            self._objective_function(self.states[-1], self.times[-1]) * self.time_step
+            self._objective_function(self.states[-1], self.times[-1])
+            * self.time_step
         )
         self.states.append(next_state)
 
@@ -365,7 +383,9 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
         This contrasts with the Runge-Kutta methods which take intermediatesamples between time steps.
         This allows buffering of previous calls to the right-hand-side function of the ODE which is
         fairly expensive."""
-        print(f"Running simulation with Two-step Adams-Bashforth integrator with {self.noise_type} noise")
+        print(
+            f"Running simulation with Two-step Adams-Bashforth integrator with {self.noise_type} noise"
+        )
         function_buffer = list()
         iters = 0
         # Initialise function buffer with f(x0, t0) and f(x1, t1)
@@ -395,7 +415,9 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
             else:
                 iters = steps
 
-        print(f"Ran {iters} iterations at time step of {self.time_step} seconds")
+        print(
+            f"Ran {iters} iterations at time step of {self.time_step} seconds"
+        )
 
 
 class RK4Simulator(Simulator, method_name="RK4"):
@@ -437,7 +459,9 @@ class RK4Simulator(Simulator, method_name="RK4"):
             else:
                 iters = steps
 
-        print(f"Ran {iters} iterations at time step of {self.time_step} seconds")
+        print(
+            f"Ran {iters} iterations at time step of {self.time_step} seconds"
+        )
 
 
 def raise_for_invalid_sim_method(sim_method: str) -> None:
@@ -448,14 +472,13 @@ def raise_for_invalid_sim_method(sim_method: str) -> None:
             f"Simulation method {sim_method} is not supported. Supported methods are: {available_methods}"
         )
 
+
 def raise_for_invalid_noise_type(noise_type: str) -> None:
     """Raises ValueError if the given type of noise is not defined"""
-    available_noise_types = ['gaussian', 'impulse']
-    if noise_type not in available_noise_types:
+    if noise_type not in Simulator._available_noise_types:
         raise ValueError(
-            f"Noise type {noise_type} is not supported. Supported methods are: {available_noise_types}"
+            f"Noise type {noise_type} is not supported. Supported methods are: {Simulator._available_noise_types=}"
         )
-
 
 
 def get_available_sim_methods() -> dict[str, type[Simulator]]:
@@ -465,6 +488,21 @@ def get_available_sim_methods() -> dict[str, type[Simulator]]:
         dict[str, subclass(Simulator)]: a dictionary of `{name: method class}`
     """
     return Simulator._methods
+
+
+# We want to give type hints for providing multiple noise types and strengths as lists
+@overload
+def generate_sim_config(
+    sim_method: str,
+    atmos_model: str,
+    initial_state: npt.ArrayLike,
+    initial_time: float = 0.0,
+    time_step: float = 0.1,
+    noise_strength: list[float] | None = None,
+    noise_type: list[str] | None = None,
+    sim_method_kwargs: dict | type[MethodKwargs] | None = None,
+    atmos_kwargs: dict | type[AtmosKwargs] | None = None,
+) -> SimConfig: ...
 
 
 def generate_sim_config(
@@ -477,7 +515,7 @@ def generate_sim_config(
     noise_type: str | None = None,
     sim_method_kwargs: dict | type[MethodKwargs] | None = None,
     atmos_kwargs: dict | type[AtmosKwargs] | None = None,
-):
+) -> SimConfig:
     assert len(initial_state) % 2 == 0
 
     raise_for_invalid_sim_method(sim_method)
@@ -491,7 +529,10 @@ def generate_sim_config(
     if sim_method_kwargs is None:
         # Use the defaults set by the data model
         sim_method_kwargs = method_kwargs_model(
-            dimension=dimension, time_step=time_step, noise_strength=noise_strength, noise_type=noise_type
+            dimension=dimension,
+            time_step=time_step,
+            noise_strength=noise_strength,
+            noise_type=noise_type,
         )
     elif type(sim_method_kwargs) is dict:
         # If a user supplies time_step in this dictionary, prefer it over the one supplied as an argument
@@ -502,7 +543,10 @@ def generate_sim_config(
         if "noise_type" in sim_method_kwargs:
             noise_type = sim_method_kwargs.pop("noise_type")
         sim_method_kwargs = method_kwargs_model(
-            dimension=dimension, time_step=time_step, noise_strength=noise_strength, noise_type = noise_type**sim_method_kwargs
+            dimension=dimension,
+            time_step=time_step,
+            noise_strength=noise_strength,
+            noise_type=noise_type**sim_method_kwargs,
         )
     elif (
         type(sim_method_kwargs) is not method_kwargs_model
@@ -552,6 +596,21 @@ def run_with_config(
     sim.run(steps=steps)
     return sim
 
+# We want to give type hints for providing multiple noise types and strengths as lists
+@overload
+def run(
+    sim_method: str,
+    atmos_model: str,
+    initial_state: npt.ArrayLike,
+    initial_time: float = 0.0,
+    time_step: float = 0.1,
+    noise_strength: list[float] | None = None,
+    noise_type: list[str] | None = None,
+    sim_method_kwargs: dict | type[MethodKwargs] | None = None,
+    atmos_kwargs: dict | type[AtmosKwargs] | None = None,
+    steps: int | None = None,
+) -> Simulator: ...
+
 
 def run(
     sim_method: str,
@@ -564,18 +623,17 @@ def run(
     sim_method_kwargs: dict | type[MethodKwargs] | None = None,
     atmos_kwargs: dict | type[AtmosKwargs] | None = None,
     steps: int | None = None,
-
 ) -> Simulator:
     config = generate_sim_config(
         sim_method=sim_method,
         atmos_model=atmos_model,
         initial_state=initial_state,
         initial_time=initial_time,
-        time_step=time_step, 
-        noise_strength = noise_strength,
-        noise_type = noise_type,
+        time_step=time_step,
+        noise_strength=noise_strength,
+        noise_type=noise_type,
         sim_method_kwargs=sim_method_kwargs,
-        atmos_kwargs=atmos_kwargs,       
+        atmos_kwargs=atmos_kwargs,
     )
     sim = run_with_config(config, steps)
     return sim
