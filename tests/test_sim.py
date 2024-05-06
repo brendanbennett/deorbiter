@@ -79,8 +79,8 @@ def test_raise_for_invalid_sim_method():
         Simulator(config)
 
 
-@pytest.mark.parametrize("noise_type", ["gaussian", None])
-def test_gaussian_noise(noise_type):
+@pytest.mark.parametrize("noise_types", [["gaussian"], None, ["impulse", "gaussian"]])
+def test_gaussian_noise(noise_types):
     initial_state = np.array((EARTH_RADIUS + 100000, 0, 0, 8000))
     config = generate_sim_config("RK4", "coesa_atmos_fast", initial_state)
     sim = Simulator(config)
@@ -90,12 +90,12 @@ def test_gaussian_noise(noise_type):
         "RK4",
         "coesa_atmos_fast",
         initial_state,
-        noise_strength=100,
-        noise_type=noise_type,
+        noise_strengths=[100] * len(noise_types) if noise_types is not None else None,
+        noise_types=noise_types,
     )
     random_sim = Simulator(random_config)
 
-    if noise_type is None:
+    if noise_types is None:
         assert np.all(sim._calculate_accel(
             sim.states[0], 0
         ) == random_sim._calculate_accel(random_sim.states[0], 0))
@@ -119,8 +119,8 @@ def test_impulse_noise(monkeypatch):
             "RK4",
             "coesa_atmos_fast",
             initial_state,
-            noise_strength=100,
-            noise_type="impulse",
+            noise_strengths=[100],
+            noise_types=["impulse"],
         )
         random_sim = Simulator(random_config)
         

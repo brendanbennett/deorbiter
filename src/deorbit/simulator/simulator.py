@@ -541,14 +541,15 @@ def generate_sim_config(
         if "time_step" in sim_method_kwargs:
             time_step = sim_method_kwargs.pop("time_step")
         if "noise_strength" in sim_method_kwargs:
-            noise_strength = sim_method_kwargs.pop("noise_strength")
+            noise_strengths = sim_method_kwargs.pop("noise_strength")
         if "noise_type" in sim_method_kwargs:
-            noise_type = sim_method_kwargs.pop("noise_type")
+            noise_types = sim_method_kwargs.pop("noise_type")
         sim_method_kwargs = method_kwargs_model(
             dimension=dimension,
             time_step=time_step,
-            noise_strength=noise_strength,
-            noise_type=noise_type**sim_method_kwargs,
+            noise_strengths=noise_strengths,
+            noise_types=noise_types,
+            **sim_method_kwargs,
         )
     elif (
         type(sim_method_kwargs) is not method_kwargs_model
