@@ -28,6 +28,17 @@ def test_generate_config(method, atmos):
     assert config.simulation_method_kwargs.method_name == method
     assert np.all(config.initial_state == initial_state)
     assert config.initial_time == 0.0
+    
+    
+def test_dict_config():
+    initial_state = np.array((EARTH_RADIUS + 100000, 0, 0, 8000))
+    config = generate_sim_config("RK4", "coesa_atmos_fast", initial_state)
+    method = config.simulation_method_kwargs.method_name
+    method_kwargs = config.simulation_method_kwargs.model_dump()
+    atmos = config.atmosphere_model_kwargs.atmos_name
+    atmos_kwargs = config.atmosphere_model_kwargs.model_dump()
+    new_config = generate_sim_config(method, atmos, initial_state, sim_method_kwargs=method_kwargs, atmos_kwargs=atmos_kwargs)
+    assert new_config == config
 
 
 @pytest.mark.parametrize("method", list(get_available_sim_methods().keys()))

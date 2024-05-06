@@ -538,12 +538,14 @@ def generate_sim_config(
         )
     elif type(sim_method_kwargs) is dict:
         # If a user supplies time_step in this dictionary, prefer it over the one supplied as an argument
+        if "dimension" in sim_method_kwargs:
+            dimension = sim_method_kwargs.pop("dimension")
         if "time_step" in sim_method_kwargs:
             time_step = sim_method_kwargs.pop("time_step")
-        if "noise_strength" in sim_method_kwargs:
-            noise_strengths = sim_method_kwargs.pop("noise_strength")
-        if "noise_type" in sim_method_kwargs:
-            noise_types = sim_method_kwargs.pop("noise_type")
+        if "noise_strengths" in sim_method_kwargs:
+            noise_strengths = sim_method_kwargs.pop("noise_strengths")
+        if "noise_types" in sim_method_kwargs:
+            noise_types = sim_method_kwargs.pop("noise_types")
         sim_method_kwargs = method_kwargs_model(
             dimension=dimension,
             time_step=time_step,
