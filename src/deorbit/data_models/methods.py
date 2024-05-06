@@ -1,6 +1,7 @@
 from typing import ClassVar, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+from deorbit.data_models.noise import NoiseKwargs, get_model_for_noise
 
 
 class MethodKwargs(BaseModel):
@@ -8,8 +9,17 @@ class MethodKwargs(BaseModel):
     # By default, our simulation is 2 dimensional
     dimension: int = 2
     time_step: float
-    noise_strengths: list[float] | None = None
-    noise_types: list[str] | None = None
+    noise_types: dict[str, dict | NoiseKwargs] = {}
+    
+    # We want to be able to take dictionary as input for noise types' parameters,
+    # but we want it stored as NoiseKwargs objects.
+    @field_validator("noise_types")
+    @classmethod
+    def validate_noise_types(cls, v: dict[str, dict | NoiseKwargs]):
+        for noise_name, noise_kwargs in v.items():
+            if isinstance(noise_kwargs, dict):
+                v[noise_name] = get_model_for_noise(noise_name)(**noise_kwargs)
+        return v
 
 
 # Children of MethodKwargs should have usable defaults for every attribute

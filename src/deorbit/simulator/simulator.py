@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
 from time import thread_time_ns
-from typing import Callable, overload
+from typing import Callable
 
 import numpy as np
 import numpy.typing as npt
@@ -11,6 +11,7 @@ from tqdm import tqdm
 
 from deorbit.data_models.atmos import AtmosKwargs, get_model_for_atmos
 from deorbit.data_models.methods import MethodKwargs, get_model_for_sim
+from deorbit.data_models.noise import NoiseKwargs, ImpulseNoiseKwargs, GaussianNoiseKwargs
 from deorbit.data_models.sim import SimConfig, SimData
 from deorbit.simulator.atmos import (
     AtmosphereModel,
@@ -200,19 +201,21 @@ class Simulator(ABC):
         noise_accel = 0
         if "gaussian" in self.noise_types:
             # gaussian noise accounting for random changes throughout the deorbit process
+            noise_kwargs: GaussianNoiseKwargs = self.noise_types["gaussian"]
             noise_accel += np.linalg.norm(
                 drag_accel + grav_accel
-            ) * np.random.normal(0, self.noise_types["gaussian"], size=2)
+            ) * np.random.normal(0, noise_kwargs.noise_strength, size=2)
 
         if "impulse" in self.noise_types:
             # impulsive noise akin to one off large scale collisions within the atmosphere
             # could make chance of collison/collision frequency a parameter to be inputted by the user??
+            noise_kwargs: ImpulseNoiseKwargs = self.noise_types["impulse"]
             collision_chance = np.random.random()
-            if collision_chance < 1e-5:
+            if collision_chance < noise_kwargs.impulse_probability:
                 # Impulse in a random direction
                 direction = np.random.uniform(0, 2 * np.pi)
                 direction = np.array([np.cos(direction), np.sin(direction)])
-                noise_accel += direction * self.noise_types["impulse"]
+                noise_accel += direction * noise_kwargs.impulse_strength
         return drag_accel + grav_accel + noise_accel
 
     def _step_time(self) -> None:
@@ -255,23 +258,13 @@ class Simulator(ABC):
         return self.sim_method_kwargs.dimension
 
     @property
-    def noise_types(self) -> dict[str, float]:
-        """Returns a dictionary of noise types and their strengths. Empty dict if no noise is present.
+    def noise_types(self) -> dict[str, NoiseKwargs]:
+        """Returns a dictionary of noise types and their parameters. Empty dict if no noise is present.
 
         Returns:
-            dict[str, float]: Dictionary of noise types and their strengths.
+            dict[str, NoiseKwargs]: Dictionary of noise types and their kwargs models.
         """
-        if self._noise_types is None:
-            if self.sim_method_kwargs.noise_types is None:
-                self._noise_types = dict()
-            else:
-                self._noise_types = dict(
-                    zip(
-                        self.sim_method_kwargs.noise_types,
-                        self.sim_method_kwargs.noise_strengths,
-                    )
-                )
-        return self._noise_types
+        return self.sim_method_kwargs.noise_types
 
     def gather_data(self) -> SimData:
         """Generates a portable data object containing all the simulation data reqiured to save.
@@ -483,17 +476,16 @@ def raise_for_invalid_sim_method(sim_method: str) -> None:
         )
 
 
-def raise_for_invalid_noise_type_strength(
-    noise_types: list[str] | None, noise_strengths: list[float]
-) -> None:
+def raise_for_invalid_noise_type(
+    noise_types: dict[str, dict | NoiseKwargs] | None) -> None:
     """Raises ValueError if any of the given list of noise types is not defined"""
     if noise_types is None:
         return
     if isinstance(noise_types, str):
-        raise ValueError("Noise types must be provided as a list of strings")
-    if not set(noise_types) <= set(Simulator._available_noise_types):
+        raise ValueError("Noise types must be provided as a dictionary of {noise_name: noise_kwargs}")
+    if not set(noise_types.keys()) <= set(Simulator._available_noise_types):
         raise ValueError(
-            f"Noise types {list(set(noise_types) - set(Simulator._available_noise_types))} "
+            f"Noise types {list(set(noise_types.keys()) - set(Simulator._available_noise_types))} "
             "are not supported. Supported methods are: {Simulator._available_noise_types=}"
         )
 
@@ -513,16 +505,18 @@ def generate_sim_config(
     initial_state: npt.ArrayLike,
     initial_time: float = 0.0,
     time_step: float = 0.1,
-    noise_strengths: list[float] | None = None,
-    noise_types: list[str] | None = None,
+    noise_types: dict[str, dict | NoiseKwargs] | None = None,
     sim_method_kwargs: dict | type[MethodKwargs] | None = None,
     atmos_kwargs: dict | type[AtmosKwargs] | None = None,
 ) -> SimConfig:
     assert len(initial_state) % 2 == 0
+    
+    if noise_types is None:
+        noise_types = {}
 
     raise_for_invalid_sim_method(sim_method)
     raise_for_invalid_atmos_model(atmos_model)
-    raise_for_invalid_noise_type_strength(noise_types, noise_strengths)
+    raise_for_invalid_noise_type(noise_types)
 
     dimension: int = int(len(initial_state) / 2)
     method_kwargs_model: type[MethodKwargs] = get_model_for_sim(sim_method)
@@ -533,7 +527,6 @@ def generate_sim_config(
         sim_method_kwargs = method_kwargs_model(
             dimension=dimension,
             time_step=time_step,
-            noise_strengths=noise_strengths,
             noise_types=noise_types,
         )
     elif type(sim_method_kwargs) is dict:
@@ -542,14 +535,11 @@ def generate_sim_config(
             dimension = sim_method_kwargs.pop("dimension")
         if "time_step" in sim_method_kwargs:
             time_step = sim_method_kwargs.pop("time_step")
-        if "noise_strengths" in sim_method_kwargs:
-            noise_strengths = sim_method_kwargs.pop("noise_strengths")
         if "noise_types" in sim_method_kwargs:
             noise_types = sim_method_kwargs.pop("noise_types")
         sim_method_kwargs = method_kwargs_model(
             dimension=dimension,
             time_step=time_step,
-            noise_strengths=noise_strengths,
             noise_types=noise_types,
             **sim_method_kwargs,
         )
@@ -608,8 +598,7 @@ def run(
     initial_state: npt.ArrayLike,
     initial_time: float = 0.0,
     time_step: float = 0.1,
-    noise_strengths: list[float] | None = None,
-    noise_types: list[str] | None = None,
+    noise_types: dict[str, dict | NoiseKwargs] | None = None,
     sim_method_kwargs: dict | type[MethodKwargs] | None = None,
     atmos_kwargs: dict | type[AtmosKwargs] | None = None,
     steps: int | None = None,
@@ -620,7 +609,6 @@ def run(
         initial_state=initial_state,
         initial_time=initial_time,
         time_step=time_step,
-        noise_strengths=noise_strengths,
         noise_types=noise_types,
         sim_method_kwargs=sim_method_kwargs,
         atmos_kwargs=atmos_kwargs,
