@@ -26,8 +26,25 @@ def test_generate_config(method, atmos):
     config = generate_sim_config(method, atmos, initial_state)
     assert config.atmosphere_model_kwargs.atmos_name == atmos
     assert config.simulation_method_kwargs.method_name == method
+    assert len(config.simulation_method_kwargs.noise_types) == 0
     assert np.all(config.initial_state == initial_state)
     assert config.initial_time == 0.0
+    
+    
+def test_export_config():
+    initial_state = np.array((EARTH_RADIUS + 100000, 0, 0, 8000))
+    config = generate_sim_config(
+        "euler",
+        "coesa_atmos_fast",
+        initial_state,
+        noise_types={
+            "impulse": {"impulse_probability": 0.5},
+            "gaussian": {"noise_strength": 0.1},
+        },
+    )
+    sim = Simulator(config)
+
+    assert sim.export_config() == config
 
 
 def test_dict_config():
