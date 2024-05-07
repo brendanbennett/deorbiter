@@ -30,4 +30,5 @@ class SimData(BaseModel):
 
     times: list[float]
 
+
    # Jacobian: list[np.ndarray]
