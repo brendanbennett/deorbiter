@@ -11,6 +11,7 @@ from tqdm import tqdm
 
 from deorbit.data_models.atmos import AtmosKwargs, get_model_for_atmos
 from deorbit.data_models.methods import MethodKwargs, get_model_for_sim
+from deorbit.data_models.noise import NoiseKwargs, ImpulseNoiseKwargs, GaussianNoiseKwargs
 from deorbit.data_models.sim import SimConfig, SimData
 from deorbit.simulator.atmos import (
     AtmosphereModel,
@@ -59,6 +60,7 @@ class Simulator(ABC):
     """
 
     _methods: dict = {}
+    _available_noise_types = ["gaussian", "impulse"]
 
     def __init_subclass__(cls, method_name: str = None, **kwargs):
         # This special method is called when a _subclass_ is defined in the code.
@@ -95,6 +97,7 @@ class Simulator(ABC):
         self._atmosphere_model = None
         self.sim_method_kwargs = config.simulation_method_kwargs
         self.time_of_last_run = datetime.now()
+        self._noise_types = None
         self.Jacobian = []  # Placeholder for the Jacobian matrix
 
         self.set_atmosphere_model(config.atmosphere_model_kwargs)
@@ -199,12 +202,33 @@ class Simulator(ABC):
         )
         return accel
 
-    def _calculate_accel(self, state: np.ndarray, time: float) -> float:
+    def _calculate_accel(self, state: np.ndarray, time: float) -> np.ndarray:
         drag_accel = self._drag_accel(state=state, time=time)
         grav_accel = self._gravity_accel(state=state)
         # print(f"state {state} at time {time} has drag accel {np.linalg.norm(drag_accel)} \
         # and gravity accel {np.linalg.norm(grav_accel)}")
-        return drag_accel + grav_accel
+        if self.noise_types is None:
+            return drag_accel + grav_accel
+
+        noise_accel = 0
+        if "gaussian" in self.noise_types:
+            # gaussian noise accounting for random changes throughout the deorbit process
+            noise_kwargs: GaussianNoiseKwargs = self.noise_types["gaussian"]
+            noise_accel += np.linalg.norm(
+                drag_accel + grav_accel
+            ) * np.random.normal(0, noise_kwargs.noise_strength, size=2)
+
+        if "impulse" in self.noise_types:
+            # impulsive noise akin to one off large scale collisions within the atmosphere
+            # could make chance of collison/collision frequency a parameter to be inputted by the user??
+            noise_kwargs: ImpulseNoiseKwargs = self.noise_types["impulse"]
+            collision_chance = np.random.random()
+            if collision_chance < noise_kwargs.impulse_probability:
+                # Impulse in a random direction
+                direction = np.random.uniform(0, 2 * np.pi)
+                direction = np.array([np.cos(direction), np.sin(direction)])
+                noise_accel += direction * noise_kwargs.impulse_strength
+        return drag_accel + grav_accel + noise_accel
 
     def _step_time(self) -> None:
         self.times.append(self.times[-1] + self.time_step)
@@ -244,6 +268,15 @@ class Simulator(ABC):
     @property
     def dim(self):
         return self.sim_method_kwargs.dimension
+
+    @property
+    def noise_types(self) -> dict[str, NoiseKwargs]:
+        """Returns a dictionary of noise types and their parameters. Empty dict if no noise is present.
+
+        Returns:
+            dict[str, NoiseKwargs]: Dictionary of noise types and their kwargs models.
+        """
+        return self.sim_method_kwargs.noise_types
 
     def gather_data(self) -> SimData:
         """Generates a portable data object containing all the simulation data reqiured to save.
@@ -312,7 +345,9 @@ class EulerSimulator(Simulator, method_name="euler"):
 
     def _run_method(self, steps: int | None) -> None:
         """Simple forward euler integration technique"""
-        print("Running simulation with Euler integrator")
+        print(
+            f"Running simulation with Euler integrator with {self.noise_types} noise"
+        )
         # Boilerplate code for stepping the simulation
         if steps is None:
             iters = 0
@@ -328,7 +363,9 @@ class EulerSimulator(Simulator, method_name="euler"):
             else:
                 iters = steps
 
-        print(f"Ran {iters} iterations at time step of {self.time_step} seconds")
+        print(
+            f"Ran {iters} iterations at time step of {self.time_step} seconds"
+        )
 
 
 class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
@@ -337,7 +374,8 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
         self.Jacobian.append(self.compute_jacobian(self.states[-1]))
         next_state = np.array(self.states[-1], dtype=float)
         next_state += (
-            self._objective_function(self.states[-1], self.times[-1]) * self.time_step
+            self._objective_function(self.states[-1], self.times[-1])
+            * self.time_step
         )
         self.states.append(next_state)
 
@@ -363,7 +401,14 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
         This contrasts with the Runge-Kutta methods which take intermediatesamples between time steps.
         This allows buffering of previous calls to the right-hand-side function of the ODE which is
         fairly expensive."""
-        print("Running simulation with Two-step Adams-Bashforth integrator")
+        if len(self.noise_types) == 0:
+            print(
+                f"Running simulation with Two-step Adams-Bashforth integrator without noise"
+            )
+        else:
+            print(
+                f"Running simulation with Two-step Adams-Bashforth integrator with {self.noise_types} noise"
+            )
         function_buffer = list()
         iters = 0
         # Initialise function buffer with f(x0, t0) and f(x1, t1)
@@ -393,7 +438,9 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
             else:
                 iters = steps
 
-        print(f"Ran {iters} iterations at time step of {self.time_step} seconds")
+        print(
+            f"Ran {iters} iterations at time step of {self.time_step} seconds"
+        )
 
 
 class RK4Simulator(Simulator, method_name="RK4"):
@@ -435,7 +482,9 @@ class RK4Simulator(Simulator, method_name="RK4"):
             else:
                 iters = steps
 
-        print(f"Ran {iters} iterations at time step of {self.time_step} seconds")
+        print(
+            f"Ran {iters} iterations at time step of {self.time_step} seconds"
+        )
 
 
 def raise_for_invalid_sim_method(sim_method: str) -> None:
@@ -444,6 +493,20 @@ def raise_for_invalid_sim_method(sim_method: str) -> None:
     if sim_method not in available_methods:
         raise ValueError(
             f"Simulation method {sim_method} is not supported. Supported methods are: {available_methods}"
+        )
+
+
+def raise_for_invalid_noise_type(
+    noise_types: dict[str, dict | NoiseKwargs] | None) -> None:
+    """Raises ValueError if any of the given list of noise types is not defined"""
+    if noise_types is None:
+        return
+    if isinstance(noise_types, str):
+        raise ValueError("Noise types must be provided as a dictionary of {noise_name: noise_kwargs}")
+    if not set(noise_types.keys()) <= set(Simulator._available_noise_types):
+        raise ValueError(
+            f"Noise types {list(set(noise_types.keys()) - set(Simulator._available_noise_types))} "
+            "are not supported. Supported methods are: {Simulator._available_noise_types=}"
         )
 
 
@@ -462,13 +525,18 @@ def generate_sim_config(
     initial_state: npt.ArrayLike,
     initial_time: float = 0.0,
     time_step: float = 0.1,
+    noise_types: dict[str, dict | NoiseKwargs] | None = None,
     sim_method_kwargs: dict | type[MethodKwargs] | None = None,
     atmos_kwargs: dict | type[AtmosKwargs] | None = None,
-):
+) -> SimConfig:
     assert len(initial_state) % 2 == 0
+    
+    if noise_types is None:
+        noise_types = {}
 
     raise_for_invalid_sim_method(sim_method)
     raise_for_invalid_atmos_model(atmos_model)
+    raise_for_invalid_noise_type(noise_types)
 
     dimension: int = int(len(initial_state) / 2)
     method_kwargs_model: type[MethodKwargs] = get_model_for_sim(sim_method)
@@ -477,14 +545,23 @@ def generate_sim_config(
     if sim_method_kwargs is None:
         # Use the defaults set by the data model
         sim_method_kwargs = method_kwargs_model(
-            dimension=dimension, time_step=time_step
+            dimension=dimension,
+            time_step=time_step,
+            noise_types=noise_types,
         )
     elif type(sim_method_kwargs) is dict:
         # If a user supplies time_step in this dictionary, prefer it over the one supplied as an argument
+        if "dimension" in sim_method_kwargs:
+            dimension = sim_method_kwargs.pop("dimension")
         if "time_step" in sim_method_kwargs:
             time_step = sim_method_kwargs.pop("time_step")
+        if "noise_types" in sim_method_kwargs:
+            noise_types = sim_method_kwargs.pop("noise_types")
         sim_method_kwargs = method_kwargs_model(
-            dimension=dimension, time_step=time_step, **sim_method_kwargs
+            dimension=dimension,
+            time_step=time_step,
+            noise_types=noise_types,
+            **sim_method_kwargs,
         )
     elif (
         type(sim_method_kwargs) is not method_kwargs_model
@@ -541,6 +618,7 @@ def run(
     initial_state: npt.ArrayLike,
     initial_time: float = 0.0,
     time_step: float = 0.1,
+    noise_types: dict[str, dict | NoiseKwargs] | None = None,
     sim_method_kwargs: dict | type[MethodKwargs] | None = None,
     atmos_kwargs: dict | type[AtmosKwargs] | None = None,
     steps: int | None = None,
@@ -551,6 +629,7 @@ def run(
         initial_state=initial_state,
         initial_time=initial_time,
         time_step=time_step,
+        noise_types=noise_types,
         sim_method_kwargs=sim_method_kwargs,
         atmos_kwargs=atmos_kwargs,
     )
