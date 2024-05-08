@@ -140,7 +140,7 @@ class Observer:
     def _check_los(
         self, longlat, state
     ):  # Checking line of sight using radar longlat and satellite state
-        if np.dot(self._rad_xyz(longlat), state[0:3]) >= 0:
+        if np.dot(self._rad_xyz(longlat), (state[0:3]-self._rad_xyz(longlat))) >= 0:
             return True
         else:
             return False
