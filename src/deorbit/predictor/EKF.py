@@ -3,29 +3,34 @@ from deorbit.utils.constants import GM_EARTH, MEAN_DRAG_COEFF, MEAN_XSECTIONAL_A
 
 
 # func to compute the Jacobian matrix dynamically
-def compute_jacobian(state, atmos, time, dt):
-    x, y, vx, vy = state
-    jacobian = np.diag([1, 1, 1, 1])
+def compute_jacobian(state, atmos, time, args):
+    x_dot_dot, y_dot_dot = args
+    x, y, x_dot, y_dot = state
+    jacobian = np.zeros(len(state), len(state))
     
-    # State transition Jacobian part
-    jacobian[0, 2] = dt
-    jacobian[1, 3] = dt
+    r = np.linalg.norm((x, y))
 
-    #calculating density and contributions to linearisations, air resitance and gravitt
     rho = atmos.density(state, time)
-    drag_coeff = -0.5 * MEAN_DRAG_COEFF * MEAN_XSECTIONAL_AREA * rho / SATELLITE_MASS
-    speed = np.linalg.norm([vx, vy])
-  
-    r = np.sqrt(x**2 + y**2)
-    grav_accel = -4*GM_EARTH / r**3
+    drho_dx = atmos.derivative(state)*(x/r)
+    drho_dy = atmos.derivative(state)*(y/r)
 
+    drag_consts = (1/(2*SATELLITE_MASS))*MEAN_DRAG_COEFF*MEAN_XSECTIONAL_AREA
+    # State transition Jacobian part
+    jacobian[0, 0] = x_dot_dot / x_dot
+    jacobian[0, 1] = x_dot_dot / y_dot
+    jacobian[1, 0] = y_dot_dot / x_dot
+    jacobian[1, 1] = y_dot_dot / y_dot
 
-    jacobian[2, 0] = grav_accel * x * dt / r + (1 + drag_coeff * np.sqrt(vx**2 + vy**2) * vx) * dt 
-    jacobian[3, 1] = grav_accel * y * dt / r + (1 + drag_coeff * np.sqrt(vx**2 + vy**2) * vy) * dt
+    jacobian[0, 2] = 1
+    jacobian[1, 3] = 1
 
-    #Adding drag components, which depend on velocity and atmospheric density
-  
-    #jacobian[2:4, 2:4] = (np.eye(2) - drag_coeff * speed * np.outer([vx, vy], [vx, vy])) * dt    
+    jacobian[0, 2] = GM_EARTH*r**(-5/2)*((r**(7/2))+3*x**2)-(drag_consts*(x_dot**2*drho_dx + 2*rho*x_dot_dot))
+    jacobian[1, 3] = GM_EARTH*r**(-5/2)*((r**(7/2))+3*y**2)-(drag_consts*(y_dot**2*drho_dy + 2*rho*y_dot_dot))    
+    jacobian[0, 3] = GM_EARTH*3*x*y*r**(-5/2) - drag_consts*(drho_dx*y_dot**2+2*y_dot*y_dot_dot/x_dot)
+    jacobian[1, 2] = GM_EARTH*3*x*y*r**(-5/2) - drag_consts*(drho_dy*x_dot**2+2*x_dot*x_dot_dot/y_dot)
+
+    jacobian[2, 2] = -drag_consts*rho*x_dot
+    jacobian[3, 3] = -drag_consts*rho*y_dot
     
     return jacobian
 
