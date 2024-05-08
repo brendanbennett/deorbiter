@@ -11,7 +11,11 @@ from tqdm import tqdm
 
 from deorbit.data_models.atmos import AtmosKwargs, get_model_for_atmos
 from deorbit.data_models.methods import MethodKwargs, get_model_for_sim
-from deorbit.data_models.noise import NoiseKwargs, ImpulseNoiseKwargs, GaussianNoiseKwargs
+from deorbit.data_models.noise import (
+    NoiseKwargs,
+    ImpulseNoiseKwargs,
+    GaussianNoiseKwargs,
+)
 from deorbit.data_models.sim import SimConfig, SimData
 from deorbit.simulator.atmos import (
     AtmosphereModel,
@@ -25,7 +29,7 @@ from deorbit.utils.constants import (
     MEAN_XSECTIONAL_AREA,
     SATELLITE_MASS,
 )
-from deorbit.utils.dataio import save_sim_data
+from deorbit.utils.dataio import save_sim_data_and_config
 
 
 class Simulator(ABC):
@@ -297,7 +301,7 @@ class Simulator(ABC):
             raise Exception("Sim dimension is not 2 or 3!")
         return data
 
-    def save_data(self, save_dir_path: str, format: str = "json") -> Path:
+    def save_data(self, save_dir_path: str, overwrite: bool = True, format: str = "json") -> Path:
         """Saves simulation data to [save_dir_path] directory as defined in the SimData data model.
 
         File name format: sim_data_[unix time in ms].json
@@ -305,12 +309,12 @@ class Simulator(ABC):
         Args:
             save_dir_path (Path like): Data directory to save json file.
         """
-        save_path = save_sim_data(
+        save_path = save_sim_data_and_config(
             self.gather_data(),
             self.export_config(),
-            dir_path_string=save_dir_path,
+            save_path=save_dir_path,
+            overwrite=overwrite,
             format=format,
-            run_time=self.time_of_last_run,
         )
         return save_path
 
@@ -477,12 +481,15 @@ def raise_for_invalid_sim_method(sim_method: str) -> None:
 
 
 def raise_for_invalid_noise_type(
-    noise_types: dict[str, dict | NoiseKwargs] | None) -> None:
+    noise_types: dict[str, dict | NoiseKwargs] | None
+) -> None:
     """Raises ValueError if any of the given list of noise types is not defined"""
     if noise_types is None:
         return
     if isinstance(noise_types, str):
-        raise ValueError("Noise types must be provided as a dictionary of {noise_name: noise_kwargs}")
+        raise ValueError(
+            "Noise types must be provided as a dictionary of {noise_name: noise_kwargs}"
+        )
     if not set(noise_types.keys()) <= set(Simulator._available_noise_types):
         raise ValueError(
             f"Noise types {list(set(noise_types.keys()) - set(Simulator._available_noise_types))} "
@@ -510,7 +517,7 @@ def generate_sim_config(
     atmos_kwargs: dict | type[AtmosKwargs] | None = None,
 ) -> SimConfig:
     assert len(initial_state) % 2 == 0
-    
+
     if noise_types is None:
         noise_types = {}
 
