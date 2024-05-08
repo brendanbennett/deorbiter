@@ -34,6 +34,10 @@ class IcaoKwargs(AtmosKwargs):
     earth_radius: float = EARTH_RADIUS
 
 
+class ZeroAtmosKwargs(AtmosKwargs):
+    atmos_name = "zero_atmos"
+
+
 def get_model_for_atmos(atmos_model_name: str) -> type[AtmosKwargs]:
     """
     Returns the correct kwargs model for the given atmosphere model.

@@ -28,7 +28,9 @@ def test_atmos_eval(model):
     atmos_model = get_available_atmos_models()[model](kwargs)
     state = (EARTH_RADIUS + 8000, 10000, 0, 0)
     density = atmos_model.density(state, time=0.0)
-    assert density
+    assert density >= 0
+    if model == "zero_atmos":
+        assert density == 0
 
 
 def test_defining_atmos_class_no_name():
