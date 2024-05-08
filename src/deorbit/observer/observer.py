@@ -26,11 +26,22 @@ class ObsData(BaseModel):
 
 class Observer:
     """ 
-    THINGS TO DO:
+    HOW TO (current, subject to change hopefully):
+    -self.states and self.times must be initially set to the states and times from the simulator.
+    -self.number_of_radars can be specified (by default is 1) and by default they are give equally spaced positions (longitude-latitude) 
+    around the equator. self.positions_of_radars can be set in list[long, lat] format for custom positions.
+
+    METHODS:
+    -self.plot_config() method shows a plot of the radar station positions
+    -self.run(checking_interval) runs the radar simulation but self.states and self.times needs setting first.
+
+
+    THINGS TO DO STILL:
+    - Test if this even works...
+    - Make it more user friendly and just layed out better
     - self.run() method should generate an instance of ObsData which will be used going forward in the Predictor. 
-    - **ADD EXPLICIT TYPE CHECKS LATER**
+    - add explicit type checking
     - noise covariance to radar observations
-    - include velocity measurements
     """
     def __init__(self, **kwargs):
         self.radius: Optional[float] = kwargs.get('radius', EARTH_RADIUS)
