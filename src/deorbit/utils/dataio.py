@@ -129,7 +129,7 @@ def _check_for_file(path: Path) -> Path:
             i += 1
     return path
 
-
+# TODO: Make saving easier
 def save_sim_data(
     data: SimData,
     config: SimConfig,
