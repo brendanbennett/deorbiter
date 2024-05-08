@@ -37,6 +37,7 @@ class Observer:
         self.times: npt.NDArray | None = kwargs.get("times", None)
         self.observed_states: list[list[float]] | None = None
         self.observed_times: list[float] | None = None
+        self.radar_noise_factor: float = kwargs.get("radar_noise_factor", 1) 
 
         self._radar_position_validator()
 
@@ -67,6 +68,19 @@ class Observer:
         y_earth = self.radius * np.cos(longlat[0])
 
         return x_earth, y_earth, z_earth
+    
+    def _measurement_noise(self, rad_longlat, sat_state):
+        """
+        Method which returns a covariance matrix for the observed state. A linear function increasing the noise as
+        distance between the radar and the satellite increases
+        """
+        distance = np.linalg.norm(sat_state[0:3] - self._rad_xyz(rad_longlat))
+        variance = distance * self.radar_noise_factor
+
+        cov = np.diag([variance, variance, variance, variance])
+        noisy_state = np.random.multivariate_normal(sat_state, cov)
+
+        return noisy_state
 
     def plot_config(self):
         """
@@ -131,7 +145,7 @@ class Observer:
                     in_sight == True
                 ):  # If the satellite is in los, append the time and state to list of observed states
                     times_observed.append(times_checked[i])
-                    states_observed.append(states_checked[i])
+                    states_observed.append(self._measurement_noise(longlat, states_checked[i]))
                     break  # If it is in los, avoid checking other radars and move to next checking interval
 
         self.observed_times = np.array(times_observed)
