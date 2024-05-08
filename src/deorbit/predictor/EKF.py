@@ -7,12 +7,13 @@ from deorbit.utils.constants import (
 )
 from deorbit.simulator import Simulator, generate_sim_config
 from deorbit.simulator.simulator import RK4Simulator
+from deorbit.data_models.sim import SimData, SimConfig
 from tqdm import tqdm
 
 
 # func to compute the Jacobian matrix dynamically
-def compute_jacobian(state, atmos, time, args):
-    x_dot_dot, y_dot_dot = args
+def compute_jacobian(state, time, accel, atmos):
+    x_dot_dot, y_dot_dot = accel
     x, y, x_dot, y_dot = state
     jacobian = np.zeros((len(state), len(state)))
 
@@ -44,7 +45,6 @@ def compute_jacobian(state, atmos, time, args):
         - GM_EARTH * r ** (-3)
         - (drag_consts * (y_dot**2 * drho_dy + 2 * rho * y_dot_dot))
     )
-    # TODO: Still to fix
     jacobian[3, 0] = GM_EARTH * 3 * x * y * r ** (-5) - drag_consts * (
         drho_dx * y_dot**2 + 2 * y_dot * y_dot_dot / x_dot
     )
@@ -64,7 +64,7 @@ def compute_jacobian(state, atmos, time, args):
     return jacobian
 
 
-def EKF(simulation_data, config, atmos, dt, Q, R, P, H):
+def EKF(simulation_data: SimData, config: SimConfig, atmos, dt, Q, R, P, H):
     # Define simulation parameters from the config
     # dt = sim_config.simulation_method_kwargs.time_step
 
@@ -74,71 +74,48 @@ def EKF(simulation_data, config, atmos, dt, Q, R, P, H):
         simulation_data.times
     )  # Number of steps based on simulation data
 
-    # Initialize state estimate
-    initial_state = np.array(
-        [
-            simulation_data.x1[0],
-            simulation_data.x2[0],
-            simulation_data.v1[0],
-            simulation_data.v2[0],
-        ]
-    )
-    x_hat = initial_state + np.random.multivariate_normal([0, 0, 0, 0], R)
-
     # We set up a simulator for stepping the states. The simulator state that persists 
     # is the atmosphere model and time step.
     integration_config = generate_sim_config(
         "RK4",
         "coesa_atmos_fast",
-        initial_state=initial_state,
+        initial_state=[0, 0, 0, 0],
         time_step=dt,
     )
     integration_sim: RK4Simulator = Simulator(integration_config)
 
     # Estimated trajectories
-    # true_trajectory = [initial_state] #dont think need this
-    estimated_trajectory = [x_hat]
-    measurements = [x_hat]
+    true_trajectory = simulation_data.state_array() #dont think need this
+    
+    measurements = true_trajectory + np.random.multivariate_normal([0, 0, 0, 0], R, num_steps)
+    measurement_times = simulation_data.times
+    estimated_trajectory = [measurements[0]]
+    print(true_trajectory[:3])
+    print(measurements[:3])
+    print(estimated_trajectory)
 
     # Extended Kalman Filter
     for i in tqdm(range(1, num_steps)):
-        # True state (from simulation, for plotting/comparison purposes only)
-        true_state = np.array(
-            [
-                simulation_data.x1[i],
-                simulation_data.x2[i],
-                simulation_data.v1[i],
-                simulation_data.v2[i],
-            ]
-        )
-        # true_trajectory.append(true_state) #dont think need this
-
         # Noisy measurement
-        measurement_noise = np.random.multivariate_normal([0, 0, 0, 0], R)
-
-        measurement = true_state + measurement_noise
+        measurement = measurements[i]
 
         # reducing number of measurements for experimentation if want
         # if i % 100 ==0:
-        measurements.append(measurement)
         # print(f"x_i = {estimated_trajectory[-1]}")
-        args = sim._calculate_accel(
+        accel = sim._calculate_accel(
             estimated_trajectory[-1], simulation_data.times[i]
         )
         # EKF Prediction
         F_t = compute_jacobian(
-            estimated_trajectory[-1], atmos, simulation_data.times[i], args
+            estimated_trajectory[-1], simulation_data.times[i], accel, atmos
         )
         x_hat_minus = integration_sim._next_state_RK4(estimated_trajectory[-1], simulation_data.times[i])
-        P_minus = np.dot(F_t, np.dot(P, F_t.T)) + Q
+        P_minus = F_t @ P @ F_t.T + Q
 
         # EKF Update
-        K = np.dot(
-            P_minus,
-            np.dot(H.T, (np.linalg.inv(np.dot(H, np.dot(P_minus, H.T)) + R))),
-        )
-        x_hat = x_hat_minus + np.dot(K, (measurement - np.dot(H, x_hat_minus)))
-        P = np.dot((np.eye(4) - np.dot(K, H)), P_minus)
+        K = P_minus @ H.T @ np.linalg.inv(H @ P_minus @ H.T + R)
+        x_hat = x_hat_minus + K @ (measurement - H @ x_hat_minus)
+        P = (np.eye(4) - K @ H) @ P_minus
 
         estimated_trajectory.append(x_hat)
 
