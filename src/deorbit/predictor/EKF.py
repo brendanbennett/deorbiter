@@ -24,13 +24,18 @@ def compute_jacobian(state, atmos, time, args):
     jacobian[0, 2] = 1
     jacobian[1, 3] = 1
 
-    jacobian[0, 2] = GM_EARTH*r**(-5/2)*((r**(7/2))+3*x**2)-(drag_consts*(x_dot**2*drho_dx + 2*rho*x_dot_dot))
-    jacobian[1, 3] = GM_EARTH*r**(-5/2)*((r**(7/2))+3*y**2)-(drag_consts*(y_dot**2*drho_dy + 2*rho*y_dot_dot))    
-    jacobian[0, 3] = GM_EARTH*3*x*y*r**(-5/2) - drag_consts*(drho_dx*y_dot**2+2*y_dot*y_dot_dot/x_dot)
-    jacobian[1, 2] = GM_EARTH*3*x*y*r**(-5/2) - drag_consts*(drho_dy*x_dot**2+2*x_dot*x_dot_dot/y_dot)
+    jacobian[2, 0] = 3*GM_EARTH*r**(-5)*x**2-GM_EARTH*r**(-3)-(drag_consts*(x_dot**2*drho_dx + 2*rho*x_dot_dot))
+    jacobian[3, 1] = 3*GM_EARTH*r**(-5)*y**2-GM_EARTH*r**(-3)-(drag_consts*(y_dot**2*drho_dy + 2*rho*y_dot_dot))    
+    # TODO: Still to fix
+    jacobian[3, 0] = GM_EARTH*3*x*y*r**(-5/2) - drag_consts*(drho_dx*y_dot**2+2*y_dot*y_dot_dot/x_dot)
+    jacobian[2, 1] = GM_EARTH*3*x*y*r**(-5/2) - drag_consts*(drho_dy*x_dot**2+2*x_dot*x_dot_dot/y_dot)
 
     jacobian[2, 2] = -drag_consts*rho*x_dot
     jacobian[3, 3] = -drag_consts*rho*y_dot
+    
+    print(f"{time=}")
+    print(jacobian)
+    print(f"{x=}, {y=}, {x_dot=}, {y_dot=}, {r=}, {rho=}, {drho_dx=}, {drho_dy=}, {x_dot_dot=}, {y_dot_dot=}")
     
     return jacobian
 
@@ -66,6 +71,7 @@ def EKF(simulation_data, config, atmos, dt, Q, R, P, H):
         #reducing number of measurements for experimentation if want
         #if i % 100 ==0: 
         measurements.append(measurement)
+        print(f"x_i = {estimated_trajectory[-1]}")
         args = sim._calculate_accel(estimated_trajectory[-1], simulation_data.times[i])
         # EKF Prediction
         F_t = compute_jacobian(estimated_trajectory[-1], atmos, simulation_data.times[i], args)
