@@ -11,7 +11,11 @@ from tqdm import tqdm
 
 from deorbit.data_models.atmos import AtmosKwargs, get_model_for_atmos
 from deorbit.data_models.methods import MethodKwargs, get_model_for_sim
-from deorbit.data_models.noise import NoiseKwargs, ImpulseNoiseKwargs, GaussianNoiseKwargs
+from deorbit.data_models.noise import (
+    NoiseKwargs,
+    ImpulseNoiseKwargs,
+    GaussianNoiseKwargs,
+)
 from deorbit.data_models.sim import SimConfig, SimData
 from deorbit.simulator.atmos import (
     AtmosphereModel,
@@ -104,26 +108,33 @@ class Simulator(ABC):
         self.set_initial_conditions(config.initial_state, config.initial_time)
 
     def compute_jacobian(self, state):
-        """ Computes the Jacobian matrix for the state transition function at the given state. """
-        x, y = state[:self.dim]
-        vx, vy = state[self.dim:]
+        """Computes the Jacobian matrix for the state transition function at the given state."""
+        x, y = state[: self.dim]
+        vx, vy = state[self.dim :]
         jacobian = np.zeros((4, 4))
-        
+
         # Fill in the derivatives for position update
-        jacobian[0:2, 2:4] = np.eye(2) * self.time_step  # dx/dvx and dy/dvy are straightforward
-        
+        jacobian[0:2, 2:4] = (
+            np.eye(2) * self.time_step
+        )  # dx/dvx and dy/dvy are straightforward
+
         # Compute derivatives involving gravity and drag for the velocity update
         r = np.sqrt(x**2 + y**2)
         grav_factor = -GM_EARTH / r**3
-        jacobian[2:4, 0:2] = np.outer([x, y], [x, y]) * grav_factor * self.time_step
-        
+        jacobian[2:4, 0:2] = (
+            np.outer([x, y], [x, y]) * grav_factor * self.time_step
+        )
+
         # Adding drag components, which depend on velocity and atmospheric density
         rho = self.atmosphere(state, self.times[-1])
-        drag_coeff = -0.5 * MEAN_DRAG_COEFF * MEAN_XSECTIONAL_AREA * rho / SATELLITE_MASS
+        drag_coeff = (
+            -0.5 * MEAN_DRAG_COEFF * MEAN_XSECTIONAL_AREA * rho / SATELLITE_MASS
+        )
         speed = np.linalg.norm([vx, vy])
-        jacobian[2:4, 2:4] = (np.eye(2) - drag_coeff * speed * np.outer([vx, vy], [vx, vy])) * self.time_step
+        jacobian[2:4, 2:4] = (
+            np.eye(2) - drag_coeff * speed * np.outer([vx, vy], [vx, vy])
+        ) * self.time_step
         return jacobian
-
 
     def export_config(self) -> SimConfig:
         """
@@ -294,7 +305,7 @@ class Simulator(ABC):
                 v1=states[:, 2],
                 v2=states[:, 3],
                 times=self.times,
-                Jacobian = self.Jacobian,
+                Jacobian=self.Jacobian,
             )
         elif self.dim == 3:
             data = SimData(
@@ -305,7 +316,7 @@ class Simulator(ABC):
                 v2=states[:, 4],
                 v3=states[:, 5],
                 times=self.times,
-                Jacobian = self.Jacobian
+                Jacobian=self.Jacobian,
             )
         else:
             raise Exception("Sim dimension is not 2 or 3!")
@@ -330,18 +341,26 @@ class Simulator(ABC):
 
 
 class EulerSimulator(Simulator, method_name="euler"):
-    def _step_state_euler(self):
+    def _next_state_euler(self, state, time) -> npt.NDArray:
         # Calculate the next state using the Euler method
         current_state = self.states[-1]
         dt = self.time_step
-        next_state = current_state + self._objective_function(current_state, self.times[-1]) * dt
-        
+        next_state = (
+            current_state
+            + self._objective_function(current_state, self.times[-1]) * dt
+        )
+
         # Update the Jacobian as well for use in EKF
         self.Jacobian.append(self.compute_jacobian(current_state))
-        
-        # Saving the new state
-        self.states.append(next_state)
+
+        return next_state
+    
+    def _step_state_euler(self) -> None:
         self._step_time()
+        # Saving the new state
+        self.states.append(
+            self._next_state_euler(self.states[-1], self.times[-1])
+        )
 
     def _run_method(self, steps: int | None) -> None:
         """Simple forward euler integration technique"""
@@ -444,24 +463,29 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
 
 
 class RK4Simulator(Simulator, method_name="RK4"):
-    def _step_state_RK4(self) -> None:
-        self._step_time()
-        next_state = np.array(self.states[-1])
-        k1 = self._objective_function(self.states[-1], self.times[-1])
+    def _next_state_RK4(self, state, time) -> npt.NDArray:
+        next_state = np.array(state)
+        k1 = self._objective_function(state, time)
         k2 = self._objective_function(
-            (self.states[-1] + (self.time_step * k1) / 2),
-            (self.times[-1] + self.time_step / 2),
+            (state + (self.time_step * k1) / 2),
+            (time + self.time_step / 2),
         )
         k3 = self._objective_function(
-            (self.states[-1] + (self.time_step * k2) / 2),
-            (self.times[-1] + self.time_step / 2),
+            (state + (self.time_step * k2) / 2),
+            (time + self.time_step / 2),
         )
         k4 = self._objective_function(
-            (self.states[-1] + self.time_step * k3),
-            (self.times[-1] + self.time_step),
+            (state + self.time_step * k3),
+            (time + self.time_step),
         )
         next_state += self.time_step * (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
-        self.states.append(next_state)
+        return next_state
+
+    def _step_state_RK4(self) -> None:
+        self._step_time()
+        self.states.append(
+            self._next_state_RK4(self.states[-1], self.times[-1])
+        )
 
     def _run_method(self, steps: int | None) -> None:
         """4th order Runge Kutta Numerical Integration Method"""
@@ -497,12 +521,15 @@ def raise_for_invalid_sim_method(sim_method: str) -> None:
 
 
 def raise_for_invalid_noise_type(
-    noise_types: dict[str, dict | NoiseKwargs] | None) -> None:
+    noise_types: dict[str, dict | NoiseKwargs] | None
+) -> None:
     """Raises ValueError if any of the given list of noise types is not defined"""
     if noise_types is None:
         return
     if isinstance(noise_types, str):
-        raise ValueError("Noise types must be provided as a dictionary of {noise_name: noise_kwargs}")
+        raise ValueError(
+            "Noise types must be provided as a dictionary of {noise_name: noise_kwargs}"
+        )
     if not set(noise_types.keys()) <= set(Simulator._available_noise_types):
         raise ValueError(
             f"Noise types {list(set(noise_types.keys()) - set(Simulator._available_noise_types))} "
@@ -530,7 +557,7 @@ def generate_sim_config(
     atmos_kwargs: dict | type[AtmosKwargs] | None = None,
 ) -> SimConfig:
     assert len(initial_state) % 2 == 0
-    
+
     if noise_types is None:
         noise_types = {}
 
