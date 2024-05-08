@@ -1,6 +1,7 @@
 from typing import ClassVar, Optional
 
 from pydantic import BaseModel, field_validator
+
 from deorbit.data_models.noise import NoiseKwargs, get_model_for_noise
 
 
@@ -10,7 +11,7 @@ class MethodKwargs(BaseModel):
     dimension: int = 2
     time_step: float
     noise_types: dict[str, dict | NoiseKwargs] = {}
-    
+
     # We want to be able to take dictionary as input for noise types' parameters,
     # but we want it stored as NoiseKwargs objects.
     @field_validator("noise_types")

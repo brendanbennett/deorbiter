@@ -11,7 +11,11 @@ from tqdm import tqdm
 
 from deorbit.data_models.atmos import AtmosKwargs, get_model_for_atmos
 from deorbit.data_models.methods import MethodKwargs, get_model_for_sim
-from deorbit.data_models.noise import NoiseKwargs, ImpulseNoiseKwargs, GaussianNoiseKwargs
+from deorbit.data_models.noise import (
+    GaussianNoiseKwargs,
+    ImpulseNoiseKwargs,
+    NoiseKwargs,
+)
 from deorbit.data_models.sim import SimConfig, SimData
 from deorbit.simulator.atmos import (
     AtmosphereModel,
@@ -202,9 +206,9 @@ class Simulator(ABC):
         if "gaussian" in self.noise_types:
             # gaussian noise accounting for random changes throughout the deorbit process
             noise_kwargs: GaussianNoiseKwargs = self.noise_types["gaussian"]
-            noise_accel += np.linalg.norm(
-                drag_accel + grav_accel
-            ) * np.random.normal(0, noise_kwargs.noise_strength, size=2)
+            noise_accel += np.linalg.norm(drag_accel + grav_accel) * np.random.normal(
+                0, noise_kwargs.noise_strength, size=2
+            )
 
         if "impulse" in self.noise_types:
             # impulsive noise akin to one off large scale collisions within the atmosphere
@@ -320,16 +324,13 @@ class EulerSimulator(Simulator, method_name="euler"):
         self._step_time()
         next_state = np.array(self.states[-1], dtype=float)
         next_state += (
-            self._objective_function(self.states[-1], self.times[-1])
-            * self.time_step
+            self._objective_function(self.states[-1], self.times[-1]) * self.time_step
         )
         self.states.append(next_state)
 
     def _run_method(self, steps: int | None) -> None:
         """Simple forward euler integration technique"""
-        print(
-            f"Running simulation with Euler integrator with {self.noise_types} noise"
-        )
+        print(f"Running simulation with Euler integrator with {self.noise_types} noise")
         # Boilerplate code for stepping the simulation
         if steps is None:
             iters = 0
@@ -345,9 +346,7 @@ class EulerSimulator(Simulator, method_name="euler"):
             else:
                 iters = steps
 
-        print(
-            f"Ran {iters} iterations at time step of {self.time_step} seconds"
-        )
+        print(f"Ran {iters} iterations at time step of {self.time_step} seconds")
 
 
 class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
@@ -355,8 +354,7 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
         self._step_time()
         next_state = np.array(self.states[-1], dtype=float)
         next_state += (
-            self._objective_function(self.states[-1], self.times[-1])
-            * self.time_step
+            self._objective_function(self.states[-1], self.times[-1]) * self.time_step
         )
         self.states.append(next_state)
 
@@ -418,9 +416,7 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
             else:
                 iters = steps
 
-        print(
-            f"Ran {iters} iterations at time step of {self.time_step} seconds"
-        )
+        print(f"Ran {iters} iterations at time step of {self.time_step} seconds")
 
 
 class RK4Simulator(Simulator, method_name="RK4"):
@@ -462,9 +458,7 @@ class RK4Simulator(Simulator, method_name="RK4"):
             else:
                 iters = steps
 
-        print(
-            f"Ran {iters} iterations at time step of {self.time_step} seconds"
-        )
+        print(f"Ran {iters} iterations at time step of {self.time_step} seconds")
 
 
 def raise_for_invalid_sim_method(sim_method: str) -> None:
@@ -477,12 +471,15 @@ def raise_for_invalid_sim_method(sim_method: str) -> None:
 
 
 def raise_for_invalid_noise_type(
-    noise_types: dict[str, dict | NoiseKwargs] | None) -> None:
+    noise_types: dict[str, dict | NoiseKwargs] | None
+) -> None:
     """Raises ValueError if any of the given list of noise types is not defined"""
     if noise_types is None:
         return
     if isinstance(noise_types, str):
-        raise ValueError("Noise types must be provided as a dictionary of {noise_name: noise_kwargs}")
+        raise ValueError(
+            "Noise types must be provided as a dictionary of {noise_name: noise_kwargs}"
+        )
     if not set(noise_types.keys()) <= set(Simulator._available_noise_types):
         raise ValueError(
             f"Noise types {list(set(noise_types.keys()) - set(Simulator._available_noise_types))} "
@@ -510,7 +507,7 @@ def generate_sim_config(
     atmos_kwargs: dict | type[AtmosKwargs] | None = None,
 ) -> SimConfig:
     assert len(initial_state) % 2 == 0
-    
+
     if noise_types is None:
         noise_types = {}
 
