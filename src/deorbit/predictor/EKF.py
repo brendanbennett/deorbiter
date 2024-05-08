@@ -1,18 +1,18 @@
 import numpy as np
 from deorbit.utils.constants import GM_EARTH, MEAN_DRAG_COEFF, MEAN_XSECTIONAL_AREA, SATELLITE_MASS
-
+from deorbit.simulator import Simulator
 
 # func to compute the Jacobian matrix dynamically
 def compute_jacobian(state, atmos, time, args):
     x_dot_dot, y_dot_dot = args
     x, y, x_dot, y_dot = state
-    jacobian = np.zeros(len(state), len(state))
+    jacobian = np.zeros((len(state), len(state)))
     
     r = np.linalg.norm((x, y))
 
     rho = atmos.density(state, time)
-    drho_dx = atmos.derivative(state)*(x/r)
-    drho_dy = atmos.derivative(state)*(y/r)
+    drho_dx = atmos.derivative(state, 0)*(x/r)
+    drho_dy = atmos.derivative(state, 0)*(y/r)
 
     drag_consts = (1/(2*SATELLITE_MASS))*MEAN_DRAG_COEFF*MEAN_XSECTIONAL_AREA
     # State transition Jacobian part
@@ -35,9 +35,11 @@ def compute_jacobian(state, atmos, time, args):
     return jacobian
 
 
-def EKF(simulation_data, atmos, dt, Q, R, P, H):
+def EKF(simulation_data, config, atmos, dt, Q, R, P, H):
     # Define simulation parameters from the config
     #dt = sim_config.simulation_method_kwargs.time_step
+
+    sim = Simulator(config)
 
     num_steps = len(simulation_data.times)  # Number of steps based on simulation data
 
@@ -64,9 +66,9 @@ def EKF(simulation_data, atmos, dt, Q, R, P, H):
         #reducing number of measurements for experimentation if want
         #if i % 100 ==0: 
         measurements.append(measurement)
-    
+        args = sim._calculate_accel(estimated_trajectory[-1], simulation_data.times[i])
         # EKF Prediction
-        F_t = compute_jacobian(estimated_trajectory[-1], atmos, simulation_data.times[i], dt)
+        F_t = compute_jacobian(estimated_trajectory[-1], atmos, simulation_data.times[i], args)
         x_hat_minus = np.dot(F_t, estimated_trajectory[-1])
         P_minus = np.dot(F_t, np.dot(P, F_t.T)) + Q
     
