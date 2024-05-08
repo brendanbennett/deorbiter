@@ -40,3 +40,11 @@ def test_save_simdata(tmpdir, format):
     
     assert pre_save_data == loaded_data_2
     assert pre_save_config == loaded_config_2
+    
+def test_silent_load():
+    load_sim_config("not/real/dir", silent=True)
+    load_sim_data("not/real/dir", silent=True)
+    with pytest.raises(FileNotFoundError):
+        load_sim_config("not/real/dir", silent=False)
+    with pytest.raises(FileNotFoundError):
+        load_sim_data("not/real/dir", silent=False)

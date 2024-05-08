@@ -151,12 +151,14 @@ def save_sim_data_and_config(
     return save_path
 
 
-def load_sim_data(save_path: Path | str) -> SimData:
+def load_sim_data(save_path: Path | str, silent: bool = True) -> SimData | None:
     """Load the simulation data from the provided directory path.
     The simulation data file is expected to be in the format `data.[format]`.
 
     Args:
-        save_path (str): Directory path containing the simulation data. e.g. `./data/sim_20210101_120000/`
+        save_path (str): Directory path containing the simulation data. e.g. `./data/sim_data_1/`
+        silent (bool): If True, suppresses the FileNotFoundError exception if save_path 
+            is not found. Default: True
 
     Raises:
         NotADirectoryError: `save_path` is not a directory
@@ -166,6 +168,11 @@ def load_sim_data(save_path: Path | str) -> SimData:
         SimData: Loaded simulation data
     """
     save_path: Path = Path(save_path)
+    
+    if not save_path.exists():
+        if silent:
+            return None
+        raise FileNotFoundError(f"The directory {save_path} does not exist")
 
     if not save_path.is_dir():
         raise NotADirectoryError(f"{save_path} is not a directory")
@@ -188,12 +195,14 @@ def load_sim_data(save_path: Path | str) -> SimData:
     return sim_data
 
 
-def load_sim_config(save_path: str) -> SimConfig:
+def load_sim_config(save_path: str, silent: bool = True) -> SimConfig | None:
     """Load the simulation config from the provided directory path.
     The config file is expected to be in the format `config.pkl`.
 
     Args:
-        save_path (str): Directory path containing the simulation config. e.g. `./data/sim_20210101_120000/`
+        save_path (str): Directory path containing the simulation config. e.g. `./data/sim_data_1/`
+        silent (bool): If True, suppresses the FileNotFoundError exception if save_path
+            is not found. Default: True
 
     Raises:
         NotADirectoryError: `save_path` is not a directory
@@ -203,6 +212,11 @@ def load_sim_config(save_path: str) -> SimConfig:
         SimConfig: Loaded simulation config
     """
     save_path: Path = Path(save_path)
+    
+    if not save_path.exists():
+        if silent:
+            return None
+        raise FileNotFoundError(f"The directory {save_path} does not exist")
 
     if not save_path.is_dir():
         raise NotADirectoryError(f"{save_path} is not a directory")
