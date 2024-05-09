@@ -26,6 +26,7 @@ def compute_jacobian(state, time, accel, atmos):
     drag_consts = (
         (1 / (2 * SATELLITE_MASS)) * MEAN_DRAG_COEFF * MEAN_XSECTIONAL_AREA
     )
+    
     # State transition Jacobian part
     jacobian[0, 0] = x_dot_dot / x_dot
     jacobian[0, 1] = x_dot_dot / y_dot
@@ -36,20 +37,20 @@ def compute_jacobian(state, time, accel, atmos):
     jacobian[1, 3] = 1
 
     jacobian[2, 0] = (
-        3 * GM_EARTH * r ** (-5) * x**2
-        - GM_EARTH * r ** (-3)
+        GM_EARTH * r**(-5) * (3 * x**2 - r**(2))
         - (drag_consts * (x_dot**2 * drho_dx + 2 * rho * x_dot_dot))
     )
+    
     jacobian[3, 1] = (
-        3 * GM_EARTH * r ** (-5) * y**2
-        - GM_EARTH * r ** (-3)
+        GM_EARTH * r**(-5) * (3 * y**2 - r**(2))
         - (drag_consts * (y_dot**2 * drho_dy + 2 * rho * y_dot_dot))
     )
+    
     jacobian[3, 0] = GM_EARTH * 3 * x * y * r ** (-5) - drag_consts * (
-        drho_dx * y_dot**2 + 2 * y_dot * y_dot_dot / x_dot
+        drho_dx * y_dot**2 + 2 * rho * y_dot * y_dot_dot / x_dot
     )
     jacobian[2, 1] = GM_EARTH * 3 * x * y * r ** (-5) - drag_consts * (
-        drho_dy * x_dot**2 + 2 * x_dot * x_dot_dot / y_dot
+        drho_dy * x_dot**2 + 2 * rho * x_dot * x_dot_dot / y_dot
     )
 
     jacobian[2, 2] = -drag_consts * rho * x_dot
