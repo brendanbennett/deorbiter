@@ -26,7 +26,7 @@ def compute_jacobian(state, time, accel, atmos):
     drag_consts = (
         (1 / (2 * SATELLITE_MASS)) * MEAN_DRAG_COEFF * MEAN_XSECTIONAL_AREA
     )
-    
+
     # State transition Jacobian part
     jacobian[0, 0] = x_dot_dot / x_dot
     jacobian[0, 1] = x_dot_dot / y_dot
@@ -65,7 +65,7 @@ def compute_jacobian(state, time, accel, atmos):
     return jacobian
 
 
-def EKF(simulation_data: SimData, config: SimConfig, atmos, dt, Q, R, P, H):
+def EKF(simulation_data: SimData, config: SimConfig, atmos, dt, Q, R, P, H, observations):
     # Define simulation parameters from the config
     # dt = sim_config.simulation_method_kwargs.time_step
 
@@ -88,20 +88,22 @@ def EKF(simulation_data: SimData, config: SimConfig, atmos, dt, Q, R, P, H):
     # Estimated trajectories
     true_trajectory = simulation_data.state_array() #dont think need this
     
-    measurements = true_trajectory + np.random.multivariate_normal([0, 0, 0, 0], R, num_steps)
-    measurement_times = simulation_data.times
-    estimated_trajectory = [measurements[0]]
-    print(true_trajectory[:3])
-    print(measurements[:3])
-    print(estimated_trajectory)
+    #measurements = true_trajectory + np.random.multivariate_normal([0, 0, 0, 0], R, num_steps)
+    measurements, measurement_times = observations
+
+    #measurement_times = simulation_data.times
+
+    #think this should start from first point of true trajectory as initial conditions are known
+    estimated_trajectory = [true_trajectory[0]+[0, 0.1, 0.1, 0]] #added stuff so no infinity error from zero division
+ #   print(true_trajectory[:3])
+  #  print(measurements[:3])
+   # print(estimated_trajectory)
+
+    j = 0 #too filter through measurement array at different rate
 
     # Extended Kalman Filter
-    for i in tqdm(range(1, num_steps)):
-        # Noisy measurement
-        measurement = measurements[i]
+    for i in tqdm(range(1, num_steps-1000)):
 
-        # reducing number of measurements for experimentation if want
-        # if i % 100 ==0:
         # print(f"x_i = {estimated_trajectory[-1]}")
         accel = sim._calculate_accel(
             estimated_trajectory[-1], simulation_data.times[i]
@@ -110,13 +112,36 @@ def EKF(simulation_data: SimData, config: SimConfig, atmos, dt, Q, R, P, H):
         F_t = compute_jacobian(
             estimated_trajectory[-1], simulation_data.times[i], accel, atmos
         )
+
         x_hat_minus = integration_sim._next_state_RK4(estimated_trajectory[-1], simulation_data.times[i])
         P_minus = F_t @ P @ F_t.T + Q
+   #     print(f"F_t: {F_t}")
+    #    print(f"P: {P}")
+     #   print(f"P-: {P_minus}")
 
-        # EKF Update
-        K = P_minus @ H.T @ np.linalg.inv(H @ P_minus @ H.T + R)
-        x_hat = x_hat_minus + K @ (measurement - H @ x_hat_minus)
-        P = (np.eye(4) - K @ H) @ P_minus
+
+        if j < len(measurements) and dt*i == measurement_times[j]:
+            # Noisy measurement
+            measurement = measurements[j]
+           # print(f"measurement: {measurement}")
+
+            # EKF Update with measurement
+            K = P_minus @ H.T @ np.linalg.inv(H @ P_minus @ H.T + R)
+       #     print(f"p-: {P_minus}")
+        #    print(f"k:{K}")
+         #   print(f"x_hat_minus{K @ (measurement - H @ x_hat_minus)}")
+            x_hat = x_hat_minus + K @ (measurement - H @ x_hat_minus)
+          #  print(f"x_hat: {x_hat}")
+            P = (np.eye(4) - K @ H) @ P_minus
+
+            j += 1
+           # print(f"measurement {j}")
+
+        else:
+            # EKF Update with measurement update
+            K = P_minus @ H.T @ np.linalg.inv(H @ P_minus @ H.T + R)
+            x_hat = x_hat_minus
+            P = (np.eye(4) - K @ H) @ P_minus
 
         estimated_trajectory.append(x_hat)
 
