@@ -68,11 +68,28 @@ def compute_jacobian(state, time, accel, atmos):
 
 
 def EKF(observations, dt, Q, R, P, H, integration_sim_config: SimConfig | None = None):
+    """Runs the Extended Kalman Filter on the given observations.
+
+    Args:
+        observations (NDArray): A tuple of (observations, measurement_times)
+        dt (float): Time step for the Kalman Filter simulation
+        Q (NDArray): Process noise matrix with shape (4, 4)
+        R (NDArray): Measurement noise matrix with shape (4, 4) or (N, 4, 4) where N is the number of measurements
+        P (NDArray): Initial state covariance matrix
+        H (NDArray): Measurement matrix
+        integration_sim_config (SimConfig | None, optional): Simulator config for the internal simulation engine. Defaults to None.
+
+    Returns:
+        _type_: _description_
+    """
     # Define simulation parameters from the config
     # dt = config.simulation_method_kwargs.time_step
     
     # We set up a simulator for stepping the states. The simulator state that persists 
     # is the atmosphere model and time step.
+    if R.ndim == 2:
+        R_mat = R
+    
     if integration_sim_config is None:
         integration_config = generate_sim_config(
             "RK4",
@@ -111,11 +128,14 @@ def EKF(observations, dt, Q, R, P, H, integration_sim_config: SimConfig | None =
         P_minus = F_t @ P @ F_t.T + Q
 
         if j < len(measurements) and np.abs(measurement_times[j] - t) < dt/2:
+            if R.ndim == 3:
+                R_mat = R[j]
+                
             # Noisy measurement
             measurement = measurements[j]
 
             # EKF Update with measurement
-            K = P_minus @ H.T @ np.linalg.inv(H @ P_minus @ H.T + R)
+            K = P_minus @ H.T @ np.linalg.inv(H @ P_minus @ H.T + R_mat)
             x_hat = x_hat_minus + K @ (measurement - H @ x_hat_minus)
             P = (np.eye(4) - K @ H) @ P_minus
 
@@ -124,9 +144,8 @@ def EKF(observations, dt, Q, R, P, H, integration_sim_config: SimConfig | None =
 
         else:
             # EKF Update without measurement
-            K = P_minus @ H.T @ np.linalg.inv(H @ P_minus @ H.T + R)
             x_hat = x_hat_minus
-            P = (np.eye(4) - K @ H) @ P_minus
+            P = P_minus
 
 
         estimated_trajectory.append(x_hat)
@@ -135,4 +154,5 @@ def EKF(observations, dt, Q, R, P, H, integration_sim_config: SimConfig | None =
             break
     pbar.close()
 
-    return np.array(estimated_trajectory), np.array(measurements)
+    times = np.array([EKF_times.__next__() for _ in range(len(estimated_trajectory))])
+    return np.array(estimated_trajectory), times
