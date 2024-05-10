@@ -12,9 +12,9 @@ from tqdm import tqdm
 from deorbit.data_models.atmos import AtmosKwargs, get_model_for_atmos
 from deorbit.data_models.methods import MethodKwargs, get_model_for_sim
 from deorbit.data_models.noise import (
-    GaussianNoiseKwargs,
-    ImpulseNoiseKwargs,
     NoiseKwargs,
+    ImpulseNoiseKwargs,
+    GaussianNoiseKwargs,
 )
 from deorbit.data_models.sim import SimConfig, SimData
 from deorbit.simulator.atmos import (
@@ -29,7 +29,7 @@ from deorbit.utils.constants import (
     MEAN_XSECTIONAL_AREA,
     SATELLITE_MASS,
 )
-from deorbit.utils.dataio import save_sim_data
+from deorbit.utils.dataio import save_sim_data_and_config
 
 
 class Simulator(ABC):
@@ -301,7 +301,7 @@ class Simulator(ABC):
             raise Exception("Sim dimension is not 2 or 3!")
         return data
 
-    def save_data(self, save_dir_path: str, format: str = "json") -> Path:
+    def save_data(self, save_dir_path: str, overwrite: bool = True, format: str = "json") -> Path:
         """Saves simulation data to [save_dir_path] directory as defined in the SimData data model.
 
         File name format: sim_data_[unix time in ms].json
@@ -309,12 +309,12 @@ class Simulator(ABC):
         Args:
             save_dir_path (Path like): Data directory to save json file.
         """
-        save_path = save_sim_data(
+        save_path = save_sim_data_and_config(
             self.gather_data(),
             self.export_config(),
-            dir_path_string=save_dir_path,
+            save_path=save_dir_path,
+            overwrite=overwrite,
             format=format,
-            run_time=self.time_of_last_run,
         )
         return save_path
 
