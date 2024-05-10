@@ -102,39 +102,9 @@ class Simulator(ABC):
         self.sim_method_kwargs = config.simulation_method_kwargs
         self.time_of_last_run = datetime.now()
         self._noise_types = None
-        self.Jacobian = []  # Placeholder for the Jacobian matrix
 
         self.set_atmosphere_model(config.atmosphere_model_kwargs)
         self.set_initial_conditions(config.initial_state, config.initial_time)
-
-    def compute_jacobian(self, state):
-        """Computes the Jacobian matrix for the state transition function at the given state."""
-        x, y = state[: self.dim]
-        vx, vy = state[self.dim :]
-        jacobian = np.zeros((4, 4))
-
-        # Fill in the derivatives for position update
-        jacobian[0:2, 2:4] = (
-            np.eye(2) * self.time_step
-        )  # dx/dvx and dy/dvy are straightforward
-
-        # Compute derivatives involving gravity and drag for the velocity update
-        r = np.sqrt(x**2 + y**2)
-        grav_factor = -GM_EARTH / r**3
-        jacobian[2:4, 0:2] = (
-            np.outer([x, y], [x, y]) * grav_factor * self.time_step
-        )
-
-        # Adding drag components, which depend on velocity and atmospheric density
-        rho = self.atmosphere(state, self.times[-1])
-        drag_coeff = (
-            -0.5 * MEAN_DRAG_COEFF * MEAN_XSECTIONAL_AREA * rho / SATELLITE_MASS
-        )
-        speed = np.linalg.norm([vx, vy])
-        jacobian[2:4, 2:4] = (
-            np.eye(2) - drag_coeff * speed * np.outer([vx, vy], [vx, vy])
-        ) * self.time_step
-        return jacobian
 
     def export_config(self) -> SimConfig:
         """
@@ -341,25 +311,21 @@ class Simulator(ABC):
 
 
 class EulerSimulator(Simulator, method_name="euler"):
-    def _next_state_euler(self, state, time) -> npt.NDArray:
+    def _next_state(self, state, time) -> npt.NDArray:
         # Calculate the next state using the Euler method
-        current_state = self.states[-1]
         dt = self.time_step
         next_state = (
-            current_state
-            + self._objective_function(current_state, self.times[-1]) * dt
+            state
+            + self._objective_function(state, time) * dt
         )
-
-        # Update the Jacobian as well for use in EKF
-        self.Jacobian.append(self.compute_jacobian(current_state))
 
         return next_state
     
-    def _step_state_euler(self) -> None:
+    def _step_state(self) -> None:
         self._step_time()
         # Saving the new state
         self.states.append(
-            self._next_state_euler(self.states[-1], self.times[-1])
+            self._next_state(self.states[-1], self.times[-1])
         )
 
     def _run_method(self, steps: int | None) -> None:
@@ -371,14 +337,14 @@ class EulerSimulator(Simulator, method_name="euler"):
         if steps is None:
             iters = 0
             while not self.is_terminal(self.states[-1]):
-                self._step_state_euler()
+                self._step_state()
                 iters += 1
         else:
             for i in tqdm(range(steps)):
                 if self.is_terminal(self.states[-1]):
                     iters = i
                     break
-                self._step_state_euler()
+                self._step_state()
             else:
                 iters = steps
 
@@ -390,7 +356,6 @@ class EulerSimulator(Simulator, method_name="euler"):
 class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
     def _step_state_euler(self) -> None:
         self._step_time()
-        self.Jacobian.append(self.compute_jacobian(self.states[-1]))
         next_state = np.array(self.states[-1], dtype=float)
         next_state += (
             self._objective_function(self.states[-1], self.times[-1])
@@ -398,7 +363,7 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
         )
         self.states.append(next_state)
 
-    def _step_state_adams_bashforth(self, buffer: list) -> None:
+    def _step_state(self, buffer: list) -> None:
         func_n_minus_2, func_n_minus_1 = buffer
         # Update with two step Adams-Bashforth
         next_state = (
@@ -410,7 +375,6 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
         self._step_time()
         buffer.append(self._objective_function(next_state, self.times[-1]))
         del buffer[0]
-        self.Jacobian.append(self.compute_jacobian(self.states[-1]))
         self.states.append(next_state)
 
     def _run_method(self, steps: int | None) -> None:
@@ -443,7 +407,7 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
         if steps is None:
             iters = 0
             while not self.is_terminal(self.states[-1]):
-                self._step_state_adams_bashforth(function_buffer)
+                self._step_state(function_buffer)
                 iters += 1
                 ## This is useful for verbose height for each orbit
                 # if len(self.states) > 3 and self.states[-1][0] < self.states[-2][0] and self.states[-2][0] > self.states[-3][0]:
@@ -453,7 +417,7 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
                 if self.is_terminal(self.states[-1]):
                     iters = i
                     break
-                self._step_state_adams_bashforth(function_buffer)
+                self._step_state(function_buffer)
             else:
                 iters = steps
 
@@ -463,7 +427,7 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
 
 
 class RK4Simulator(Simulator, method_name="RK4"):
-    def _next_state_RK4(self, state, time) -> npt.NDArray:
+    def _next_state(self, state, time) -> npt.NDArray:
         next_state = np.array(state)
         k1 = self._objective_function(state, time)
         k2 = self._objective_function(
@@ -481,10 +445,10 @@ class RK4Simulator(Simulator, method_name="RK4"):
         next_state += self.time_step * (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
         return next_state
 
-    def _step_state_RK4(self) -> None:
+    def _step_state(self) -> None:
         self._step_time()
         self.states.append(
-            self._next_state_RK4(self.states[-1], self.times[-1])
+            self._next_state(self.states[-1], self.times[-1])
         )
 
     def _run_method(self, steps: int | None) -> None:
@@ -495,14 +459,14 @@ class RK4Simulator(Simulator, method_name="RK4"):
         if steps is None:
             iters = 0
             while not self.is_terminal(self.states[-1]):
-                self._step_state_RK4()
+                self._step_state()
                 iters += 1
         else:
             for i in tqdm(range(steps)):
                 if self.is_terminal(self.states[-1]):
                     iters = i
                     break
-                self._step_state_RK4()
+                self._step_state()
             else:
                 iters = steps
 
