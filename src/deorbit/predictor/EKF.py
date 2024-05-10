@@ -4,6 +4,7 @@ from deorbit.utils.constants import (
     MEAN_DRAG_COEFF,
     MEAN_XSECTIONAL_AREA,
     SATELLITE_MASS,
+    EARTH_RADIUS
 )
 from deorbit.simulator import Simulator, generate_sim_config
 from deorbit.simulator.simulator import RK4Simulator
@@ -94,15 +95,17 @@ def EKF(simulation_data: SimData, config: SimConfig, atmos, dt, Q, R, P, H, obse
     #measurement_times = simulation_data.times
 
     #think this should start from first point of true trajectory as initial conditions are known
+    #estimated_trajectory = [measurements[0]]
     estimated_trajectory = [true_trajectory[0]+[0, 0.1, 0.1, 0]] #added stuff so no infinity error from zero division
- #   print(true_trajectory[:3])
+ # 
+  # print(true_trajectory[:3])
   #  print(measurements[:3])
    # print(estimated_trajectory)
 
     j = 0 #too filter through measurement array at different rate
 
     # Extended Kalman Filter
-    for i in tqdm(range(1, num_steps-1000)):
+    for i in tqdm(range(1, num_steps)):
 
         # print(f"x_i = {estimated_trajectory[-1]}")
         accel = sim._calculate_accel(
@@ -143,6 +146,10 @@ def EKF(simulation_data: SimData, config: SimConfig, atmos, dt, Q, R, P, H, obse
             x_hat = x_hat_minus
             P = (np.eye(4) - K @ H) @ P_minus
 
+
         estimated_trajectory.append(x_hat)
+
+        if (x_hat[0]**2 + x_hat[1]**2)**0.5 < EARTH_RADIUS:
+            break
 
     return np.array(estimated_trajectory), np.array(measurements)
