@@ -3,8 +3,8 @@ from contextlib import redirect_stdout
 from io import StringIO
 from typing import Callable
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from ambiance import Atmosphere as _IcaoAtmosphere
 
 from deorbit.data_models.atmos import (
@@ -13,7 +13,7 @@ from deorbit.data_models.atmos import (
     CoesaKwargs,
     IcaoKwargs,
     SimpleAtmosKwargs,
-    ZeroAtmosKwargs
+    ZeroAtmosKwargs,
 )
 from deorbit.utils.constants import AIR_DENSITY_SEA_LEVEL, EARTH_RADIUS
 
@@ -72,7 +72,7 @@ class AtmosphereModel(ABC):
             except NotImplementedError:
                 pass
         return fig, ax
-    
+
 
 class ZeroAtmos(AtmosphereModel, model_name="zero_atmos"):
     """Generate zero atmospheric model

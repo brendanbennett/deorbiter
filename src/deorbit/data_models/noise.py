@@ -10,7 +10,7 @@ class NoiseKwargs(BaseModel):
 class GaussianNoiseKwargs(NoiseKwargs):
     noise_name = "gaussian"
     noise_strength: float = 0.001
-    
+
 
 class ImpulseNoiseKwargs(NoiseKwargs):
     noise_name = "impulse"
@@ -35,6 +35,4 @@ def get_model_for_noise(noise_name: str) -> type[NoiseKwargs]:
         if model.noise_name == noise_name:
             return model
     else:
-        raise ValueError(
-            f"Sim method {noise_name} has no supporting kwargs model!"
-        )
+        raise ValueError(f"Sim method {noise_name} has no supporting kwargs model!")
