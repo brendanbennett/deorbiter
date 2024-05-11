@@ -98,8 +98,12 @@ class EKF:
 
         return jacobian
 
-    def next_state(self, state, time, Q, P, H, observation=None, R=None):
-        # print(f"x_i = {estimated_trajectory[-1]}")
+    def next_state(self, state, time, Q, P, H = None, dt = None, observation=None, R=None):
+        if dt is not None:
+            self.dt = dt
+        if observation is not None and np.any((R is None, H is None)):
+            raise ValueError("If observation is not None, R and H must be provided")
+            
         accel = self.integration_sim._calculate_accel(state, time)
         # EKF Prediction
         F_t = self.compute_jacobian(state, time, accel, self.atmos)
