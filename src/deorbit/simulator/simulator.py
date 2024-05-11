@@ -279,7 +279,6 @@ class Simulator(ABC):
                 v1=states[:, 2],
                 v2=states[:, 3],
                 times=self.times,
-                Jacobian=self.Jacobian,
             )
         elif self.dim == 3:
             data = SimData(
@@ -290,7 +289,6 @@ class Simulator(ABC):
                 v2=states[:, 4],
                 v3=states[:, 5],
                 times=self.times,
-                Jacobian=self.Jacobian,
             )
         else:
             raise Exception("Sim dimension is not 2 or 3!")
