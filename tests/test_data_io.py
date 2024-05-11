@@ -4,7 +4,7 @@ from pathlib import Path
 
 from deorbit.simulator import Simulator, generate_sim_config
 from deorbit.utils.constants import EARTH_RADIUS
-from deorbit.utils.dataio import formats, load_sim_data, load_sim_config
+from deorbit.utils.dataio import formats, load_sim_config, load_sim_data
 
 
 @pytest.mark.parametrize("format", formats.keys())

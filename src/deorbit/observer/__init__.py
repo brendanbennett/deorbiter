@@ -1,1 +1,1 @@
-import deorbit.observer.observer as observer
+from .observer import Observer

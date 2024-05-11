@@ -29,8 +29,8 @@ def test_generate_config(method, atmos):
     assert len(config.simulation_method_kwargs.noise_types) == 0
     assert np.all(config.initial_state == initial_state)
     assert config.initial_time == 0.0
-    
-    
+
+
 def test_export_config():
     initial_state = np.array((EARTH_RADIUS + 100000, 0, 0, 8000))
     config = generate_sim_config(
