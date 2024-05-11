@@ -1,16 +1,17 @@
-import numpy as np
 from itertools import count
+
+import numpy as np
+from tqdm import tqdm
+
+from deorbit.simulator import Simulator, generate_sim_config
+from deorbit.simulator.atmos import AtmosphereModel
 from deorbit.utils.constants import (
+    EARTH_RADIUS,
     GM_EARTH,
     MEAN_DRAG_COEFF,
     MEAN_XSECTIONAL_AREA,
     SATELLITE_MASS,
 )
-from deorbit.simulator import Simulator, generate_sim_config
-from deorbit.simulator.atmos import AtmosphereModel
-from deorbit.simulator.simulator import RK4Simulator
-from deorbit.data_models.sim import SimConfig
-from tqdm import tqdm
 
 
 class EKF:
@@ -19,7 +20,7 @@ class EKF:
         atmos_model = kwargs.get("atmos_model", "coesa_atmos_fast")
         sim_method_kwargs = kwargs.get("sim_method_kwargs", None)
         atmos_kwargs = kwargs.get("atmos_kwargs", None)
-        
+
         integration_sim_config = generate_sim_config(
             sim_method,
             atmos_model,
@@ -30,24 +31,26 @@ class EKF:
         )
         self.integration_sim = Simulator(integration_sim_config)
         self.atmos = AtmosphereModel(integration_sim_config.atmosphere_model_kwargs)
-        
+
         try:
-            self.atmos.derivative([0, 0, 0, 0], 0)
+            self.atmos.derivative(
+                np.array((EARTH_RADIUS + 150000, 0, 0, 7820)),
+                0,
+            )
         except NotImplementedError:
             raise ValueError("Atmosphere model must have a derivative method")
-        
+
         self.estimated_trajectory = []
         self.times = []
 
-    
     @property
     def dt(self):
         return self.integration_sim.time_step
-    
+
     @dt.setter
-    def df(self, value):
+    def dt(self, value):
         self.integration_sim.time_step = value
-    
+
     @staticmethod
     def compute_jacobian(state, time, accel, atmos: AtmosphereModel):
         # func to compute the Jacobian matrix dynamically
@@ -74,16 +77,14 @@ class EKF:
         jacobian[0, 2] = 1
         jacobian[1, 3] = 1
 
-        jacobian[2, 0] = (
-            GM_EARTH * r**(-5) * (3 * x**2 - r**(2))
-            - (drag_consts * (x_dot**2 * drho_dx + 2 * rho * x_dot_dot))
+        jacobian[2, 0] = GM_EARTH * r ** (-5) * (3 * x**2 - r ** (2)) - (
+            drag_consts * (x_dot**2 * drho_dx + 2 * rho * x_dot_dot)
         )
-        
-        jacobian[3, 1] = (
-            GM_EARTH * r**(-5) * (3 * y**2 - r**(2))
-            - (drag_consts * (y_dot**2 * drho_dy + 2 * rho * y_dot_dot))
+
+        jacobian[3, 1] = GM_EARTH * r ** (-5) * (3 * y**2 - r ** (2)) - (
+            drag_consts * (y_dot**2 * drho_dy + 2 * rho * y_dot_dot)
         )
-        
+
         jacobian[3, 0] = GM_EARTH * 3 * x * y * r ** (-5) - drag_consts * (
             drho_dx * y_dot**2 + 2 * rho * y_dot * y_dot_dot / x_dot
         )
@@ -93,18 +94,14 @@ class EKF:
 
         jacobian[2, 2] = -drag_consts * rho * x_dot
         jacobian[3, 3] = -drag_consts * rho * y_dot
-        
+
         return jacobian
-    
-    def next_state(self, state, time, Q, P, H, observation = None, R = None):
+
+    def next_state(self, state, time, Q, P, H, observation=None, R=None):
         # print(f"x_i = {estimated_trajectory[-1]}")
-        accel = self.integration_sim._calculate_accel(
-            state, time
-        )
+        accel = self.integration_sim._calculate_accel(state, time)
         # EKF Prediction
-        F_t = self.compute_jacobian(
-            state, time, accel, self.atmos
-        )
+        F_t = self.compute_jacobian(state, time, accel, self.atmos)
         Phi_t: np.NDArray = np.eye(4) + F_t * self.dt
 
         x_hat_minus = self.integration_sim._next_state(state, time)
@@ -112,19 +109,21 @@ class EKF:
 
         if observation is not None:
             if R is None:
-                raise ValueError("Measurement noise matrix R must be provided if observation is provided")
+                raise ValueError(
+                    "Measurement noise matrix R must be provided if observation is provided"
+                )
             # EKF Update with measurement
             K = P_minus @ H.T @ np.linalg.inv(H @ P_minus @ H.T + R)
             x_hat = x_hat_minus + K @ (observation - H @ x_hat_minus)
             P = (np.eye(4) - K @ H) @ P_minus
-            
+
         else:
             # EKF Update without measurement
             x_hat = x_hat_minus
             P = P_minus
-        
+
         return x_hat, P
-        
+
     def run(self, observations, dt, Q, R, P, H):
         """Runs the Extended Kalman Filter on the given observations.
 
@@ -141,41 +140,54 @@ class EKF:
             _type_: _description_
         """
         self.dt = dt
-        
-        # We set up a simulator for stepping the states. The simulator state that persists 
+
+        # We set up a simulator for stepping the states. The simulator state that persists
         # is the atmosphere model and time step.
         if R.ndim == 2:
             R_mat = R
 
         # Estimated trajectories
         measurements, measurement_times = observations
-        
+
         # Generator for the EKF time steps
         EKF_times = count(measurement_times[0], self.dt)
 
         estimated_trajectory = [measurements[0]]
+        uncertainties = []
 
-        j = 0 # to filter through measurement array at different rate
+        j = 0  # to filter through measurement array at different rate
 
         # Extended Kalman Filter
         pbar = tqdm(total=len(measurement_times))
         for t in EKF_times:
-            if j < len(measurements) and np.abs(measurement_times[j] - t) < self.dt/2:
+            if j < len(measurements) and np.abs(measurement_times[j] - t) < self.dt / 2:
                 if R.ndim == 3:
                     R_mat = R[j]
-                x_hat, P = self.next_state(estimated_trajectory[-1], t, self.dt, Q, P, H, observation = measurements[j], R = R_mat)
+                x_hat, P = self.next_state(
+                    estimated_trajectory[-1],
+                    t,
+                    Q,
+                    P,
+                    H,
+                    observation=measurements[j],
+                    R=R_mat,
+                )
                 # Count a measurement and move to the next measurement that is in the future.
                 # NB: This may skip measurements.
-                j = np.argmax(measurement_times > t + self.dt/2)
-                pbar.update(1) # Progress bar
+                j = np.argmax(measurement_times > t + self.dt / 2)
+                pbar.update(1)  # Progress bar
             else:
-                x_hat, P = self.next_state(estimated_trajectory[-1], t, self.dt, Q, P, H)
+                x_hat, P = self.next_state(estimated_trajectory[-1], t, Q, P, H)
 
             estimated_trajectory.append(x_hat)
+            uncertainties.append(P)
 
             if self.integration_sim.is_terminal(estimated_trajectory[-1]):
                 break
         pbar.close()
 
-        times = np.array([EKF_times.__next__() for _ in range(len(estimated_trajectory))])
-        return np.array(estimated_trajectory), times
+        times = np.array(
+            [EKF_times.__next__() for _ in range(len(estimated_trajectory))]
+        )
+        uncertainties = np.array(uncertainties)
+        return np.array(estimated_trajectory), uncertainties, times

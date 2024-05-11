@@ -52,10 +52,17 @@ class AtmosphereModel(ABC):
     def density(self, state: np.ndarray, time: float) -> float: ...
 
     def derivative(self, state: np.ndarray, time: float) -> float:
-        raise NotImplementedError("Derivative not implemented for this atmosphere model")
+        raise NotImplementedError(
+            "Derivative not implemented for this atmosphere model"
+        )
 
     def plot(
-        self, height_bounds_meters: tuple[float, float], num_points: int = 100, ax: plt.Axes = None, label: str = None, derivative: bool = False
+        self,
+        height_bounds_meters: tuple[float, float],
+        num_points: int = 100,
+        ax: plt.Axes = None,
+        label: str = None,
+        derivative: bool = False,
     ) -> None:
         if ax is None:
             fig, ax = plt.subplots()
@@ -184,7 +191,7 @@ class CoesaAtmosFast(AtmosphereModel, model_name="coesa_atmos_fast"):
         )
         sampled_densities = _coesa76(sample_heights * 1e-3).rho
         self._samples = dict(zip(sample_heights, sampled_densities))
-        
+
         sampled_derivatives = np.gradient(sampled_densities, 10**self.kwargs.precision)
         self._derivatives = dict(zip(sample_heights, sampled_derivatives))
 
@@ -206,7 +213,7 @@ class CoesaAtmosFast(AtmosphereModel, model_name="coesa_atmos_fast"):
                 f"Height {height}m at time {time} is not supported by the COESA76-fast atmosphere model!"
             )
         return rho
-    
+
     def derivative(self, state: np.ndarray, time: float) -> float:
         # TODO: Fix this: has a bump
         dim = int(len(state) / 2)
