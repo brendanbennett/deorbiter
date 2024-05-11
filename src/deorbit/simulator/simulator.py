@@ -245,6 +245,10 @@ class Simulator(ABC):
     @property
     def time_step(self):
         return self.sim_method_kwargs.time_step
+    
+    @time_step.setter
+    def time_step(self, value):
+        self.sim_method_kwargs.time_step = value
 
     @property
     def dim(self):
