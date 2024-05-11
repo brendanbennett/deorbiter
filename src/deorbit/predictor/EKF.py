@@ -1,6 +1,7 @@
 from itertools import count
 
 import numpy as np
+import numpy.typing as npt
 from tqdm import tqdm
 
 from deorbit.simulator import Simulator, generate_sim_config
@@ -102,7 +103,7 @@ class EKF:
         accel = self.integration_sim._calculate_accel(state, time)
         # EKF Prediction
         F_t = self.compute_jacobian(state, time, accel, self.atmos)
-        Phi_t: np.NDArray = np.eye(4) + F_t * self.dt
+        Phi_t: npt.NDArray = np.eye(4) + F_t * self.dt
 
         x_hat_minus = self.integration_sim._next_state(state, time)
         P_minus = Phi_t @ P @ Phi_t.T + Q
