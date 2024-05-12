@@ -4,7 +4,8 @@ from deorbit.utils.constants import EARTH_RADIUS
 
 def xyz_from_latlong(latlong, radius: float = EARTH_RADIUS):
     """
-    Gives x and y on the Earth surface at a specified latitude and longitude
+    Gives x and y on the Earth surface at a specified latitude and longitude.
+    This does not account for the rotation of the Earth; we assume 0N, 0E is at (1, 0, 0).
     """
     if not len(latlong) == 2:
         raise ValueError("latlong must be of length 2")
@@ -21,7 +22,8 @@ def xyz_from_latlong(latlong, radius: float = EARTH_RADIUS):
 
 def latlong_from_xyz(xyz):
     """
-    Gives latitude and longitude from x and y on the Earth surface
+    Gives latitude and longitude from x and y on the Earth surface. 
+    This does not account for the rotation of the Earth; we assume 0N, 0E is at (1, 0, 0).
     """
     if not len(xyz) == 3:
         raise ValueError("xyz must be of length 3")
