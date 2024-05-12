@@ -15,7 +15,7 @@ from deorbit.data_models.atmos import (
     SimpleAtmosKwargs,
     ZeroAtmosKwargs,
 )
-from deorbit.utils.constants import AIR_DENSITY_SEA_LEVEL, EARTH_RADIUS
+from deorbit.utils.constants import AIR_DENSITY_SEA_LEVEL, EARTH_RADIUS, EARTH_ROTATIONAL_SPEED
 
 
 class AtmosphereModel(ABC):
@@ -55,7 +55,15 @@ class AtmosphereModel(ABC):
         dim = int(len(state) / 2)
         position = state[:dim]
         velocity = state[dim:]
-        return np.cross([0, 0, self.kwargs.earth_angular_velocity], position) + velocity
+        rot_2d_ccw = np.array([[0, 1], [-1, 0]])
+        if dim == 2:
+            rot_radius = np.linalg.norm(position)
+            vel_direction = rot_2d_ccw @ position / (np.linalg.norm(position))
+        if dim == 3:
+            rot_radius = np.sqrt(np.sum(position ** 2) + state[2] ** 2)
+            vel_direction = np.array([*(rot_2d_ccw @ position[:2] / (np.linalg.norm(position[:2]))), 0])
+        speed = EARTH_ROTATIONAL_SPEED * rot_radius
+        return velocity + speed * vel_direction
 
     def plot(
         self,
