@@ -2,13 +2,14 @@ from typing import ClassVar
 
 from pydantic import BaseModel
 
-from deorbit.utils.constants import AIR_DENSITY_SEA_LEVEL, EARTH_RADIUS
+from deorbit.utils.constants import AIR_DENSITY_SEA_LEVEL, EARTH_RADIUS, EARTH_ROTATIONAL_SPEED
 
 
 class AtmosKwargs(BaseModel):
     """Point of truth for atmosphere model parameters"""
 
     atmos_name: ClassVar[str]
+    earth_angular_velocity: float = EARTH_ROTATIONAL_SPEED
 
 
 # Children of AtmosKwargs should have usable defaults for every attribute

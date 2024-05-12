@@ -159,6 +159,9 @@ class Simulator(ABC):
 
     def atmosphere(self, state: np.ndarray, time: float) -> float:
         return self._atmosphere_model.density(state, time)
+    
+    def _atmos_velocity(self, state: np.ndarray, time: float) -> np.ndarray:
+        pass
 
     def _gravity_accel(self, state: np.ndarray) -> np.ndarray:
         """Calculate acceleration by gravity.
