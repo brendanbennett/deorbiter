@@ -126,7 +126,7 @@ class Observer:
         ax.set_title("Earth Radar Station Config")
         plt.show()
 
-    def run(self, simulator_instance, checking_interval):
+    def run(self, sim_states, sim_times, checking_interval):
         """
         Runs the simulation of the radar measurements using an instance of the deorbit simulation. 
         Radars check for line of sight at regular time intervals equal to (checking_interval * simulator interval) seconds.
@@ -139,8 +139,8 @@ class Observer:
 
         # Only checking the states at a regular interval specified by time_step
         radar_initial_positions = self.positions_of_radars
-        times_checked = simulator_instance.times[::checking_interval]
-        states_checked = simulator_instance.states[::checking_interval]
+        times_checked = sim_times[::checking_interval]
+        states_checked = sim_states[::checking_interval]
 
         for i, xi in enumerate(times_checked):
             for radar, latlong in enumerate(radar_initial_positions):  # For each radar:
