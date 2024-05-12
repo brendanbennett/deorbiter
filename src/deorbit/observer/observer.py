@@ -17,7 +17,7 @@ class Observer:
 
         :::Radar Stations Configuration:::
         self.number_of_radars: Determines how many radar stations are used in the simulation, default 1
-        self.positions_of_radars: Optional numpy array containing [longitude, latitude] for each satellite, otherwise default positions set
+        self.positions_of_radars: Optional numpy array containing [latitude, longitude] for each satellite, otherwise default positions set
         self.radar_variance_per_m: Simulates the uncertainty in the measurement. The variance increases linearly as distance to satellite increases. Default 0.1
 
         :::Observer Output:::
@@ -55,7 +55,7 @@ class Observer:
         rad_default_positions = np.zeros(shape=(number_of_radars, 2))
         for i in range(number_of_radars):
             radar_lon = 0 + i * delta_lon
-            rad_default_positions[i, 0] = radar_lon
+            rad_default_positions[i, 1] = radar_lon
         return rad_default_positions
 
     def _radar_position_validator(self):
@@ -109,7 +109,7 @@ class Observer:
         ax.plot_surface(x, y, z, color="g", alpha=0.5)
 
         for i, xi in enumerate(self.positions_of_radars):
-            x_radar, y_radar, z_radar = self._rad_xyz(xi)
+            x_radar, y_radar, z_radar = xyz_from_latlong(xi)
             ax.scatter(
                 x_radar,
                 y_radar,
