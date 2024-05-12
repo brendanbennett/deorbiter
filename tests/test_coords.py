@@ -14,8 +14,11 @@ def test_xyz_from_latlong():
     }
 
     for (lat, long, radius), xyz in expected.items():
-        assert np.max(np.abs(coords.xyz_from_latlong((lat, long), radius) - xyz)) <= 1e-10
-        
+        assert (
+            np.max(np.abs(coords.cart_from_latlong((lat, long), radius) - xyz)) <= 1e-10
+        )
+
+
 def test_latlong_from_xyz():
     expected = {
         (1, 0, 0): (0, 0),
@@ -26,4 +29,4 @@ def test_latlong_from_xyz():
     }
 
     for xyz, latlong in expected.items():
-        assert np.max(np.abs(coords.latlong_from_xyz(xyz) - latlong)) <= 1e-10
+        assert np.max(np.abs(coords.latlong_from_cart(xyz) - latlong)) <= 1e-10
