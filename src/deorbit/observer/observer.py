@@ -75,7 +75,7 @@ class Observer:
         distance = np.linalg.norm(sat_state[0:3] - xyz_from_latlong(rad_latlong))
         variance = distance * self.radar_variance_per_m
 
-        cov = np.diag([variance, variance, variance, variance])
+        cov = np.eye(6) * variance
         noisy_state = np.random.multivariate_normal(sat_state, cov)
 
         return noisy_state, cov
@@ -133,6 +133,8 @@ class Observer:
         Returns self.observed_times and self.observed_states class attributes containing the times and states
         when the satellite has been observed by a radar station.
         """
+        if sim_states.shape[1] != 6:
+            raise ValueError("Observation only defined for 3 dimensional simulations.")
         times_observed = []
         states_observed = []
         covariances = []
