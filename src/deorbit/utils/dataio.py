@@ -130,16 +130,14 @@ def save_sim_data_and_config(
     # Config format should be pickle as it maintains information about the model/method used
 
     save_path = Path(save_path)
-    
+
     os.makedirs(save_path, exist_ok=True)
 
     data_path = _get_filename(DATA_STEM, dir_path=save_path, file_type=format)
     if not overwrite:
         data_path = _bump_file_name(data_path)
 
-    config_path = _get_filename(
-        CONFIG_STEM, dir_path=save_path, file_type=CONFIG_FMT
-    )
+    config_path = _get_filename(CONFIG_STEM, dir_path=save_path, file_type=CONFIG_FMT)
     if not overwrite:
         config_path = _bump_file_name(config_path)
 
@@ -157,7 +155,7 @@ def load_sim_data(save_path: Path | str, silent: bool = True) -> SimData | None:
 
     Args:
         save_path (str): Directory path containing the simulation data. e.g. `./data/sim_data_1/`
-        silent (bool): If True, suppresses the FileNotFoundError exception if save_path 
+        silent (bool): If True, suppresses the FileNotFoundError exception if save_path
             is not found. Default: True
 
     Raises:
@@ -168,7 +166,7 @@ def load_sim_data(save_path: Path | str, silent: bool = True) -> SimData | None:
         SimData: Loaded simulation data
     """
     save_path: Path = Path(save_path)
-    
+
     if not save_path.exists():
         if silent:
             return None
@@ -212,7 +210,7 @@ def load_sim_config(save_path: str, silent: bool = True) -> SimConfig | None:
         SimConfig: Loaded simulation config
     """
     save_path: Path = Path(save_path)
-    
+
     if not save_path.exists():
         if silent:
             return None

@@ -75,10 +75,10 @@ class Observer:
         y_earth = self.radius * np.cos(longlat[0])
 
         return x_earth, y_earth, z_earth
-    
+
     def _measurement_noise(self, rad_longlat, sat_state):
         """
-        Method which returns the observed state with additional measurement noise sampled from a multivariate Gaussian. 
+        Method which returns the observed state with additional measurement noise sampled from a multivariate Gaussian.
         The noise increases linearly as distance between the radar and the satellite increases.
         """
         distance = np.linalg.norm(sat_state[0:3] - self._rad_xyz(rad_longlat))
@@ -93,7 +93,7 @@ class Observer:
         """
         Checking line of sight using radar longlat and satellite state
         """
-        if np.dot(self._rad_xyz(longlat), (state[0:3]-self._rad_xyz(longlat))) >= 0:
+        if np.dot(self._rad_xyz(longlat), (state[0:3] - self._rad_xyz(longlat))) >= 0:
             return True
         else:
             return False
