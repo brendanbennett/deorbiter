@@ -4,6 +4,7 @@ import numpy.typing as npt
 from pydantic import BaseModel
 
 from deorbit.utils.constants import EARTH_RADIUS, EARTH_ROTATIONAL_SPEED
+from deorbit.utils.coords import xyz_from_latlong
 
 
 class Observer:
@@ -65,23 +66,13 @@ class Observer:
             raise ValueError(
                 f"positions_of_radars must be a numpy array with shape ({self.number_of_radars}, 2)"
             )
-
-    def _rad_xyz(self, longlat):
-        """
-        Gives x and y on the Earth surface at a specified longitude and latitude
-        """
-        x_earth = self.radius * np.cos(longlat[1]) * np.sin(longlat[0])
-        z_earth = self.radius * np.sin(longlat[1]) * np.sin(longlat[0])
-        y_earth = self.radius * np.cos(longlat[0])
-
-        return x_earth, y_earth, z_earth
     
-    def _measurement_noise(self, rad_longlat, sat_state):
+    def _measurement_noise(self, rad_latlong, sat_state):
         """
         Method which returns the observed state with additional measurement noise sampled from a multivariate Gaussian. 
         The noise increases linearly as distance between the radar and the satellite increases.
         """
-        distance = np.linalg.norm(sat_state[0:3] - self._rad_xyz(rad_longlat))
+        distance = np.linalg.norm(sat_state[0:3] - xyz_from_latlong(rad_latlong))
         variance = distance * self.radar_variance_per_m
 
         cov = np.diag([variance, variance, variance, variance])
@@ -89,11 +80,11 @@ class Observer:
 
         return noisy_state, cov
     
-    def _check_los(self, longlat, state):  
+    def _check_los(self, latlong, state):  
         """
-        Checking line of sight using radar longlat and satellite state
+        Checking line of sight using radar latlong and satellite state
         """
-        if np.dot(self._rad_xyz(longlat), (state[0:3]-self._rad_xyz(longlat))) >= 0:
+        if np.dot(xyz_from_latlong(latlong), (state[0:3]-xyz_from_latlong(latlong))) >= 0:
             return True
         else:
             return False
@@ -152,18 +143,18 @@ class Observer:
         states_checked = simulator_instance.states[::checking_interval]
 
         for i, xi in enumerate(times_checked):
-            for radar, longlat in enumerate(radar_initial_positions):  # For each radar:
-                longlat[0] = (
-                    longlat[0] + self.rotation * times_checked[i]
+            for radar, latlong in enumerate(radar_initial_positions):  # For each radar:
+                latlong[1] = (
+                    latlong[1] + self.rotation * times_checked[i]
                 )  # Move longitude in line with Earth's rotation
                 in_sight = self._check_los(
-                    longlat, states_checked[i]
+                    latlong, states_checked[i]
                 )  # Check if the satellite is in los
                 if (
                     in_sight == True
                 ):  # If the satellite is in los, append the time and state to list of observed states
                     times_observed.append(times_checked[i])
-                    noisy_state, covariance = self._measurement_noise(longlat, states_checked[i])
+                    noisy_state, covariance = self._measurement_noise(latlong, states_checked[i])
                     states_observed.append(noisy_state)
                     covariances.append(covariance)
                     break  # If it is in los, avoid checking other radars and move to next checking interval

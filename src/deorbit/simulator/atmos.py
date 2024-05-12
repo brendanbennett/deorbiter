@@ -50,6 +50,12 @@ class AtmosphereModel(ABC):
 
     @abstractmethod
     def density(self, state: np.ndarray, time: float) -> float: ...
+    
+    def atmosphere_velocity(self, state: np.ndarray, time: float) -> np.ndarray:
+        dim = int(len(state) / 2)
+        position = state[:dim]
+        velocity = state[dim:]
+        return np.cross([0, 0, self.kwargs.earth_angular_velocity], position) + velocity
 
     def plot(
         self,

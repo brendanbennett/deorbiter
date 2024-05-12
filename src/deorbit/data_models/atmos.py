@@ -9,30 +9,27 @@ class AtmosKwargs(BaseModel):
     """Point of truth for atmosphere model parameters"""
 
     atmos_name: ClassVar[str]
+    earth_radius: float = EARTH_RADIUS
     earth_angular_velocity: float = EARTH_ROTATIONAL_SPEED
 
 
 # Children of AtmosKwargs should have usable defaults for every attribute
 class CoesaKwargs(AtmosKwargs):
     atmos_name = "coesa_atmos"
-    earth_radius: float = EARTH_RADIUS
 
 
 class CoesaFastKwargs(AtmosKwargs):
     atmos_name = "coesa_atmos_fast"
-    earth_radius: float = EARTH_RADIUS
     precision: int = 2
 
 
 class SimpleAtmosKwargs(AtmosKwargs):
     atmos_name = "simple_atmos"
-    earth_radius: float = EARTH_RADIUS
     surf_density: float = AIR_DENSITY_SEA_LEVEL
 
 
 class IcaoKwargs(AtmosKwargs):
     atmos_name = "icao_standard_atmos"
-    earth_radius: float = EARTH_RADIUS
 
 
 class ZeroAtmosKwargs(AtmosKwargs):
