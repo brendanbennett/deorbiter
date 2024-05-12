@@ -65,12 +65,18 @@ class AtmosphereModel(ABC):
         speed = EARTH_ROTATIONAL_SPEED * rot_radius
         return velocity + speed * vel_direction
 
+    def derivative(self, state: np.ndarray, time: float) -> float:
+        raise NotImplementedError(
+            "Derivative not implemented for this atmosphere model"
+        )
+
     def plot(
         self,
         height_bounds_meters: tuple[float, float],
         num_points: int = 100,
         ax: plt.Axes = None,
         label: str = None,
+        derivative: bool = False,
     ) -> None:
         if ax is None:
             fig, ax = plt.subplots()
@@ -80,6 +86,12 @@ class AtmosphereModel(ABC):
         state_samples = [(0, EARTH_RADIUS + h, 0, 0) for h in heights]
         densities = [self.density(s, 0) for s in state_samples]
         ax.plot(densities, heights, label=label)
+        if derivative:
+            try:
+                derivatives = [self.derivative(s, 0) for s in state_samples]
+                ax.plot(derivatives, heights, label=label + " derivative")
+            except NotImplementedError:
+                pass
         return fig, ax
 
 
@@ -194,6 +206,9 @@ class CoesaAtmosFast(AtmosphereModel, model_name="coesa_atmos_fast"):
         sampled_densities = _coesa76(sample_heights * 1e-3).rho
         self._samples = dict(zip(sample_heights, sampled_densities))
 
+        sampled_derivatives = np.gradient(sampled_densities, 10**self.kwargs.precision)
+        self._derivatives = dict(zip(sample_heights, sampled_derivatives))
+
     def density(self, state: np.ndarray, time: float) -> float:
         dim = int(len(state) / 2)
         position = state[:dim]
@@ -212,6 +227,25 @@ class CoesaAtmosFast(AtmosphereModel, model_name="coesa_atmos_fast"):
                 f"Height {height}m at time {time} is not supported by the COESA76-fast atmosphere model!"
             )
         return rho
+
+    def derivative(self, state: np.ndarray, time: float) -> float:
+        # TODO: Fix this: has a bump
+        dim = int(len(state) / 2)
+        position = state[:dim]
+
+        height = np.linalg.norm(position) - self.kwargs.earth_radius
+        rounded_height = np.round(height, decimals=-self.kwargs.precision)
+        rounded_height = (
+            rounded_height
+            if rounded_height >= self._start
+            else rounded_height + 10**self.kwargs.precision
+        )
+        try:
+            return self._derivatives[rounded_height]
+        except KeyError:
+            raise Exception(
+                f"Height {height}m at time {time} is not supported by the COESA76-fast atmosphere model!"
+            )
 
 
 def raise_for_invalid_atmos_model(atmos_model: str) -> None:

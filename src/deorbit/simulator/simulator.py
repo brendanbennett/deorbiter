@@ -6,15 +6,14 @@ from typing import Callable
 
 import numpy as np
 import numpy.typing as npt
-from numpy._typing import ArrayLike
 from tqdm import tqdm
 
 from deorbit.data_models.atmos import AtmosKwargs, get_model_for_atmos
 from deorbit.data_models.methods import MethodKwargs, get_model_for_sim
 from deorbit.data_models.noise import (
-    NoiseKwargs,
-    ImpulseNoiseKwargs,
     GaussianNoiseKwargs,
+    ImpulseNoiseKwargs,
+    NoiseKwargs,
 )
 from deorbit.data_models.sim import SimConfig, SimData
 from deorbit.simulator.atmos import (
@@ -257,6 +256,10 @@ class Simulator(ABC):
     def time_step(self):
         return self.sim_method_kwargs.time_step
 
+    @time_step.setter
+    def time_step(self, value):
+        self.sim_method_kwargs.time_step = value
+
     @property
     def dim(self):
         return self.sim_method_kwargs.dimension
@@ -301,7 +304,9 @@ class Simulator(ABC):
             raise Exception("Sim dimension is not 2 or 3!")
         return data
 
-    def save_data(self, save_dir_path: str, overwrite: bool = True, format: str = "json") -> Path:
+    def save_data(
+        self, save_dir_path: str, overwrite: bool = True, format: str = "json"
+    ) -> Path:
         """Saves simulation data to [save_dir_path] directory as defined in the SimData data model.
 
         File name format: sim_data_[unix time in ms].json
@@ -320,13 +325,17 @@ class Simulator(ABC):
 
 
 class EulerSimulator(Simulator, method_name="euler"):
-    def _step_state_euler(self) -> None:
+    def _next_state(self, state, time) -> npt.NDArray:
+        # Calculate the next state using the Euler method
+        dt = self.time_step
+        next_state = state + self._objective_function(state, time) * dt
+
+        return next_state
+
+    def _step_state(self) -> None:
         self._step_time()
-        next_state = np.array(self.states[-1], dtype=float)
-        next_state += (
-            self._objective_function(self.states[-1], self.times[-1]) * self.time_step
-        )
-        self.states.append(next_state)
+        # Saving the new state
+        self.states.append(self._next_state(self.states[-1], self.times[-1]))
 
     def _run_method(self, steps: int | None) -> None:
         """Simple forward euler integration technique"""
@@ -335,14 +344,14 @@ class EulerSimulator(Simulator, method_name="euler"):
         if steps is None:
             iters = 0
             while not self.is_terminal(self.states[-1]):
-                self._step_state_euler()
+                self._step_state()
                 iters += 1
         else:
             for i in tqdm(range(steps)):
                 if self.is_terminal(self.states[-1]):
                     iters = i
                     break
-                self._step_state_euler()
+                self._step_state()
             else:
                 iters = steps
 
@@ -358,7 +367,7 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
         )
         self.states.append(next_state)
 
-    def _step_state_adams_bashforth(self, buffer: list) -> None:
+    def _step_state(self, buffer: list) -> None:
         func_n_minus_2, func_n_minus_1 = buffer
         # Update with two step Adams-Bashforth
         next_state = (
@@ -402,7 +411,7 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
         if steps is None:
             iters = 0
             while not self.is_terminal(self.states[-1]):
-                self._step_state_adams_bashforth(function_buffer)
+                self._step_state(function_buffer)
                 iters += 1
                 ## This is useful for verbose height for each orbit
                 # if len(self.states) > 3 and self.states[-1][0] < self.states[-2][0] and self.states[-2][0] > self.states[-3][0]:
@@ -412,7 +421,7 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
                 if self.is_terminal(self.states[-1]):
                     iters = i
                     break
-                self._step_state_adams_bashforth(function_buffer)
+                self._step_state(function_buffer)
             else:
                 iters = steps
 
@@ -420,24 +429,27 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
 
 
 class RK4Simulator(Simulator, method_name="RK4"):
-    def _step_state_RK4(self) -> None:
-        self._step_time()
-        next_state = np.array(self.states[-1])
-        k1 = self._objective_function(self.states[-1], self.times[-1])
+    def _next_state(self, state, time) -> npt.NDArray:
+        next_state = np.array(state)
+        k1 = self._objective_function(state, time)
         k2 = self._objective_function(
-            (self.states[-1] + (self.time_step * k1) / 2),
-            (self.times[-1] + self.time_step / 2),
+            (state + (self.time_step * k1) / 2),
+            (time + self.time_step / 2),
         )
         k3 = self._objective_function(
-            (self.states[-1] + (self.time_step * k2) / 2),
-            (self.times[-1] + self.time_step / 2),
+            (state + (self.time_step * k2) / 2),
+            (time + self.time_step / 2),
         )
         k4 = self._objective_function(
-            (self.states[-1] + self.time_step * k3),
-            (self.times[-1] + self.time_step),
+            (state + self.time_step * k3),
+            (time + self.time_step),
         )
         next_state += self.time_step * (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
-        self.states.append(next_state)
+        return next_state
+
+    def _step_state(self) -> None:
+        self._step_time()
+        self.states.append(self._next_state(self.states[-1], self.times[-1]))
 
     def _run_method(self, steps: int | None) -> None:
         """4th order Runge Kutta Numerical Integration Method"""
@@ -447,14 +459,14 @@ class RK4Simulator(Simulator, method_name="RK4"):
         if steps is None:
             iters = 0
             while not self.is_terminal(self.states[-1]):
-                self._step_state_RK4()
+                self._step_state()
                 iters += 1
         else:
             for i in tqdm(range(steps)):
                 if self.is_terminal(self.states[-1]):
                     iters = i
                     break
-                self._step_state_RK4()
+                self._step_state()
             else:
                 iters = steps
 
