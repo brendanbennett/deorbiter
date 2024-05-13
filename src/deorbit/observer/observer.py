@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
-from pydantic import BaseModel
 
 from deorbit.utils.constants import EARTH_RADIUS, EARTH_ROTATIONAL_SPEED
 from deorbit.utils.coords import cart_from_latlong
