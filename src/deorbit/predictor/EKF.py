@@ -17,15 +17,20 @@ from deorbit.utils.constants import (
 
 class EKF:
     def __init__(self, **kwargs):
+        dim = kwargs.get("dim", 2)
         sim_method = kwargs.get("sim_method", "RK4")
         atmos_model = kwargs.get("atmos_model", "coesa_atmos_fast")
         sim_method_kwargs = kwargs.get("sim_method_kwargs", None)
         atmos_kwargs = kwargs.get("atmos_kwargs", None)
 
+        # TODO: Add support for 3D sims
+        if dim != 2:
+            raise NotImplementedError("Only 2D simulations are supported")
+
         integration_sim_config = generate_sim_config(
             sim_method,
             atmos_model,
-            initial_state=[0, 0, 0, 0],#need to find way to change this to be 2d/3d
+            initial_state=np.zeros(dim * 2),
             time_step=0.1,
             sim_method_kwargs=sim_method_kwargs,
             atmos_kwargs=atmos_kwargs,
@@ -52,6 +57,10 @@ class EKF:
     def dt(self, value):
         self.integration_sim.time_step = value
 
+    @property
+    def dim(self):
+        return self.integration_sim.dim
+
     @staticmethod
     def compute_jacobian(state, time, accel, atmos: AtmosphereModel):
         #calculate dimension for jacobian
@@ -75,6 +84,9 @@ class EKF:
             drho_dy = atmos.derivative(state, 0) * (y / r)
 
             # State transition Jacobian part
+            
+            # PROBLEM: x_dot and y_dot can be zero, which will cause a division by zero error,
+            # leading to P being NaN
             jacobian[0, 0] = x_dot_dot / x_dot
             jacobian[0, 1] = x_dot_dot / y_dot
             jacobian[1, 0] = y_dot_dot / x_dot
@@ -168,22 +180,24 @@ class EKF:
 
         return jacobian
 
-    def next_state(self, state, time, Q, P, H = None, dt = None, observation=None, R=None):
+    def next_state(self, state, time, Q, P, H=None, dt=None, observation=None, R=None):
         if dt is not None:
             self.dt = dt
         if observation is not None and np.any((R is None, H is None)):
             raise ValueError("If observation is not None, R and H must be provided")
         
-        if np.any([i.shape != (len(state), len(state)) for i in [Q, P, H, R]]):
+        if np.any([i.shape != [2 * self.dim] * 2 for i in [Q, P, H, R]]):
             raise ValueError(f"Kalman matrices not same dimensions, should be {len(state)} by {len(state)}")
             
         accel = self.integration_sim._calculate_accel(state, time)
         # EKF Prediction
         F_t = self.compute_jacobian(state, time, accel, self.atmos)
-        Phi_t: npt.NDArray = np.eye(len(state)) + F_t * self.dt
+        Phi_t: npt.NDArray = np.eye(2 * self.dim) + F_t * self.dt
 
         x_hat_minus = self.integration_sim._next_state(state, time)
         P_minus = Phi_t @ P @ Phi_t.T + Q
+        if np.any(np.isnan(P_minus)):
+            print(f"{P=}, {Phi_t=}, {P_minus=}")
 
         if observation is not None:
             if R is None:
@@ -193,7 +207,7 @@ class EKF:
             # EKF Update with measurement
             K = P_minus @ H.T @ np.linalg.inv(H @ P_minus @ H.T + R)
             x_hat = x_hat_minus + K @ (observation - H @ x_hat_minus)
-            P = (np.eye(len(state)) - K @ H) @ P_minus
+            P = (np.eye(2 * self.dim) - K @ H) @ P_minus
 
         else:
             # EKF Update without measurement
@@ -269,3 +283,31 @@ class EKF:
         )
         uncertainties = np.array(uncertainties)
         return np.array(estimated_trajectory), uncertainties, times
+
+
+class EKFOnline:
+    def __init__(
+        self, ekf: EKF, initial_state, initial_time, initial_uncertainty
+    ) -> None:
+        self.ekf = ekf
+        self.estimated_trajectory = [initial_state]
+        self.estimated_times = [initial_time]
+        self.uncertainties = [initial_uncertainty]
+
+    def step(self, time, Q, observation=None, R=None, H=None):
+        dt = time - self.estimated_times[-1]
+        self.estimated_times.append(time)
+        x_hat, P = self.ekf.next_state(
+            self.estimated_trajectory[-1],
+            time,
+            Q,
+            self.uncertainties[-1],
+            H,
+            dt=dt,
+            observation=observation,
+            R=R,
+        )
+        self.estimated_trajectory.append(x_hat)
+        self.uncertainties.append(P)
+        if np.any(np.isnan(P)):
+            print(f"{dt=}")

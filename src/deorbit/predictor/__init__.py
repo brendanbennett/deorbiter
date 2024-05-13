@@ -1,1 +1,1 @@
-from .EKF import EKF
+from .EKF import EKF, EKFOnline
