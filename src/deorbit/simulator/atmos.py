@@ -220,6 +220,8 @@ class CoesaAtmosFast(AtmosphereModel, model_name="coesa_atmos_fast"):
             if rounded_height >= self._start
             else rounded_height + 10**self.kwargs.precision
         )
+        if rounded_height > 1000000:
+            return 0.0
         try:
             rho = self._samples[rounded_height]
         except KeyError:
@@ -240,6 +242,8 @@ class CoesaAtmosFast(AtmosphereModel, model_name="coesa_atmos_fast"):
             if rounded_height >= self._start
             else rounded_height + 10**self.kwargs.precision
         )
+        if rounded_height > 1000000:
+            return 0.0
         try:
             return self._derivatives[rounded_height]
         except KeyError:
