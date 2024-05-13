@@ -25,7 +25,7 @@ class EKF:
         integration_sim_config = generate_sim_config(
             sim_method,
             atmos_model,
-            initial_state=[0, 0, 0, 0],
+            initial_state=[0, 0, 0, 0],#need to find way to change this to be 2d/3d
             time_step=0.1,
             sim_method_kwargs=sim_method_kwargs,
             atmos_kwargs=atmos_kwargs,
@@ -54,47 +54,117 @@ class EKF:
 
     @staticmethod
     def compute_jacobian(state, time, accel, atmos: AtmosphereModel):
-        # func to compute the Jacobian matrix dynamically
-        x_dot_dot, y_dot_dot = accel
-        x, y, x_dot, y_dot = state
+        #calculate dimension for jacobian
+        dim = len(state)/2
+
         jacobian = np.zeros((len(state), len(state)))
-
-        r = np.linalg.norm((x, y))
-
         rho = atmos.density(state, time)
-        drho_dx = atmos.derivative(state, 0) * (x / r)
-        drho_dy = atmos.derivative(state, 0) * (y / r)
-
+        
         drag_consts = (
             (1 / (2 * SATELLITE_MASS)) * MEAN_DRAG_COEFF * MEAN_XSECTIONAL_AREA
         )
 
-        # State transition Jacobian part
-        jacobian[0, 0] = x_dot_dot / x_dot
-        jacobian[0, 1] = x_dot_dot / y_dot
-        jacobian[1, 0] = y_dot_dot / x_dot
-        jacobian[1, 1] = y_dot_dot / y_dot
+        # func to compute the Jacobian matrix dynamically
+        if dim == 2:
+            x_dot_dot, y_dot_dot = accel
+            x, y, x_dot, y_dot = state
+        
+            r = np.linalg.norm((x, y))
 
-        jacobian[0, 2] = 1
-        jacobian[1, 3] = 1
+            drho_dx = atmos.derivative(state, 0) * (x / r)
+            drho_dy = atmos.derivative(state, 0) * (y / r)
 
-        jacobian[2, 0] = GM_EARTH * r ** (-5) * (3 * x**2 - r ** (2)) - (
-            drag_consts * (x_dot**2 * drho_dx + 2 * rho * x_dot_dot)
-        )
+            # State transition Jacobian part
+            jacobian[0, 0] = x_dot_dot / x_dot
+            jacobian[0, 1] = x_dot_dot / y_dot
+            jacobian[1, 0] = y_dot_dot / x_dot
+            jacobian[1, 1] = y_dot_dot / y_dot
 
-        jacobian[3, 1] = GM_EARTH * r ** (-5) * (3 * y**2 - r ** (2)) - (
-            drag_consts * (y_dot**2 * drho_dy + 2 * rho * y_dot_dot)
-        )
+            jacobian[0, 2] = 1
+            jacobian[1, 3] = 1
 
-        jacobian[3, 0] = GM_EARTH * 3 * x * y * r ** (-5) - drag_consts * (
-            drho_dx * y_dot**2 + 2 * rho * y_dot * y_dot_dot / x_dot
-        )
-        jacobian[2, 1] = GM_EARTH * 3 * x * y * r ** (-5) - drag_consts * (
-            drho_dy * x_dot**2 + 2 * rho * x_dot * x_dot_dot / y_dot
-        )
+            jacobian[2, 0] = GM_EARTH * r ** (-5) * (3 * x**2 - r ** (2)) - (
+                drag_consts * (x_dot**2 * drho_dx + 2 * rho * x_dot_dot)
+            )   
 
-        jacobian[2, 2] = -drag_consts * rho * x_dot
-        jacobian[3, 3] = -drag_consts * rho * y_dot
+            jacobian[3, 1] = GM_EARTH * r ** (-5) * (3 * y**2 - r ** (2)) - (
+                drag_consts * (y_dot**2 * drho_dy + 2 * rho * y_dot_dot)
+            )
+
+            jacobian[3, 0] = GM_EARTH * 3 * x * y * r ** (-5) - drag_consts * (
+                drho_dx * y_dot**2 + 2 * rho * y_dot * y_dot_dot / x_dot
+            )
+            jacobian[2, 1] = GM_EARTH * 3 * x * y * r ** (-5) - drag_consts * (
+                drho_dy * x_dot**2 + 2 * rho * x_dot * x_dot_dot / y_dot
+            )
+
+            jacobian[2, 2] = -drag_consts * rho * x_dot
+            jacobian[3, 3] = -drag_consts * rho * y_dot
+
+        if dim ==3:
+            x_dot_dot, y_dot_dot, z_dot_dot = accel
+            x, y, z, x_dot, y_dot, z_dot= state
+        
+            r = np.linalg.norm((x, y, z))
+
+            drho_dx = atmos.derivative(state, 0) * (x / r)
+            drho_dy = atmos.derivative(state, 0) * (y / r)
+            drho_dz = atmos.derivative(state, 0) * (z / r)
+
+            # State transition Jacobian part
+            jacobian[0, 0] = x_dot_dot / x_dot
+            jacobian[0, 1] = x_dot_dot / y_dot
+            jacobian[0, 2] = x_dot_dot / z_dot
+            jacobian[1, 0] = y_dot_dot / x_dot
+            jacobian[1, 1] = y_dot_dot / y_dot
+            jacobian[1, 2] = y_dot_dot / z_dot
+            jacobian[2, 0] = z_dot_dot / x_dot
+            jacobian[2, 1] = z_dot_dot / y_dot
+            jacobian[2, 2] = z_dot_dot / z_dot
+
+            jacobian[0, 3] = 1
+            jacobian[1, 4] = 1
+            jacobian[2, 5] = 1
+
+            jacobian[3, 0] = GM_EARTH * r ** (-5) * (3 * x**2 - r ** (2)) - (
+                drag_consts * (x_dot**2 * drho_dx + 2 * rho * x_dot_dot)
+            )   
+
+            jacobian[4, 1] = GM_EARTH * r ** (-5) * (3 * y**2 - r ** (2)) - (
+                drag_consts * (y_dot**2 * drho_dy + 2 * rho * y_dot_dot)
+            )
+
+            jacobian[5, 2] = GM_EARTH * r ** (-5) * (3 * z**2 - r ** (2)) - (
+                drag_consts * (z_dot**2 * drho_dz + 2 * rho * z_dot_dot)
+            )
+
+            jacobian[4, 0] = GM_EARTH * 3 * x * y * r ** (-5) - drag_consts * (
+                drho_dx * y_dot**2 + 2 * rho * y_dot * y_dot_dot / x_dot
+            )
+
+            jacobian[5, 0] = GM_EARTH * 3 * x * z * r ** (-5) - drag_consts * (
+                drho_dx * z_dot**2 + 2 * rho * z_dot * z_dot_dot / x_dot
+            )
+
+            jacobian[3, 1] = GM_EARTH * 3 * x * y * r ** (-5) - drag_consts * (
+                drho_dy * x_dot**2 + 2 * rho * x_dot * x_dot_dot / y_dot
+            )
+
+            jacobian[5, 1] = GM_EARTH * 3 * z * y * r ** (-5) - drag_consts * (
+                drho_dy * z_dot**2 + 2 * rho * z_dot * z_dot_dot / y_dot
+            )
+
+            jacobian[3, 2] = GM_EARTH * 3 * x * z * r ** (-5) - drag_consts * (
+                drho_dz * x_dot**2 + 2 * rho * x_dot * x_dot_dot / z_dot
+            )
+
+            jacobian[4, 2] = GM_EARTH * 3 * z * y * r ** (-5) - drag_consts * (
+                drho_dz * y_dot**2 + 2 * rho * y_dot * y_dot_dot / z_dot
+            )
+
+            jacobian[3, 3] = -drag_consts * rho * x_dot
+            jacobian[4, 4] = -drag_consts * rho * y_dot
+            jacobian[5, 5] = -drag_consts * rho * z_dot
 
         return jacobian
 
@@ -103,11 +173,13 @@ class EKF:
             self.dt = dt
         if observation is not None and np.any((R is None, H is None)):
             raise ValueError("If observation is not None, R and H must be provided")
+        
+        # if Q, R, P, H not equal to state length * state length return error
             
         accel = self.integration_sim._calculate_accel(state, time)
         # EKF Prediction
         F_t = self.compute_jacobian(state, time, accel, self.atmos)
-        Phi_t: npt.NDArray = np.eye(4) + F_t * self.dt
+        Phi_t: npt.NDArray = np.eye(len(state)) + F_t * self.dt
 
         x_hat_minus = self.integration_sim._next_state(state, time)
         P_minus = Phi_t @ P @ Phi_t.T + Q
@@ -120,7 +192,7 @@ class EKF:
             # EKF Update with measurement
             K = P_minus @ H.T @ np.linalg.inv(H @ P_minus @ H.T + R)
             x_hat = x_hat_minus + K @ (observation - H @ x_hat_minus)
-            P = (np.eye(4) - K @ H) @ P_minus
+            P = (np.eye(len(state)) - K @ H) @ P_minus
 
         else:
             # EKF Update without measurement
@@ -135,7 +207,7 @@ class EKF:
         Args:
             observations (NDArray): A tuple of (observations, measurement_times)
             dt (float): Time step for the Kalman Filter simulation
-            Q (NDArray): Process noise matrix with shape (4, 4)
+            Q (NDArray): Process noise matrix with shape (4, 4) or (6, 6)
             R (NDArray): Measurement noise matrix with shape (4, 4) or (N, 4, 4) where N is the number of measurements
             P (NDArray): Initial state covariance matrix
             H (NDArray): Measurement matrix
