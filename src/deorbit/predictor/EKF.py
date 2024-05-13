@@ -174,7 +174,8 @@ class EKF:
         if observation is not None and np.any((R is None, H is None)):
             raise ValueError("If observation is not None, R and H must be provided")
         
-        # if Q, R, P, H not equal to state length * state length return error
+        if np.any([i.shape != (len(state), len(state)) for i in [Q, P, H, R]]):
+            raise ValueError(f"Kalman matrices not same dimensions, should be {len(state)} by {len(state)}")
             
         accel = self.integration_sim._calculate_accel(state, time)
         # EKF Prediction
