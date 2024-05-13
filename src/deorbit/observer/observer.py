@@ -27,8 +27,9 @@ class Observer:
         METHODS:
         self.plot_config(): Shows a 3D plot of the radar station configuration
 
-        self.run(simulator_instance, checking_interval):
-        ->simulator_instance: the instance of the Simulator class which contains .times and .states which are used in this method.
+        self.run(sim_times, sim_states, checking_interval):
+        ->sim_states: the states of the satellite given by the Simulator
+        ->sim_times: the time steps of each state given by the Simulator
         ->checking_interval: Radars check for line of sight at regular time intervals equal to (checking_interval * simulator interval) seconds.
         """
         self.dim: float = kwargs.get("dim", 2)
