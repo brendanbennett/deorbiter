@@ -158,6 +158,9 @@ class Simulator(ABC):
 
     def atmosphere(self, state: np.ndarray, time: float) -> float:
         return self._atmosphere_model.density(state, time)
+    
+    def atmosphere_velocity(self, state: np.ndarray, time: float) -> np.ndarray:
+        return self._atmosphere_model.velocity(state, time)
 
     def _gravity_accel(self, state: np.ndarray) -> np.ndarray:
         """Calculate acceleration by gravity.
@@ -183,13 +186,14 @@ class Simulator(ABC):
         Returns:
             np.ndarray: Acceleration by drag vector
         """
+        relative_velocity = self._vel_from_state(state) - self.atmosphere_velocity(state, time)
         accel = (
             -(1 / (2 * SATELLITE_MASS))
             * self.atmosphere(state, time)
             * MEAN_XSECTIONAL_AREA
             * MEAN_DRAG_COEFF
-            * state[self.dim :]
-            * np.linalg.norm(state[self.dim :])
+            * relative_velocity
+            * np.linalg.norm(relative_velocity)
         )
         return accel
 

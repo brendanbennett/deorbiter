@@ -28,6 +28,7 @@ class AtmosphereModel(ABC):
     """
 
     _models = {}
+    _rot_2d_ccw = np.array([[0, 1], [-1, 0]])
 
     def __init_subclass__(cls, model_name: str = None, **kwargs):
         # This special method is called when a _subclass_ is defined in the code.
@@ -51,19 +52,27 @@ class AtmosphereModel(ABC):
     @abstractmethod
     def density(self, state: np.ndarray, time: float) -> float: ...
     
-    def atmosphere_velocity(self, state: np.ndarray, time: float) -> np.ndarray:
+    def velocity(self, state: np.ndarray, time: float) -> np.ndarray:
+        """Calculate the velocity of the atmosphere as a result of the Earth's rotation at a given state (and time)
+
+        Args:
+            state (np.ndarray): The state of the object in the atmosphere
+            time (float): The time at which the velocity is calculated
+
+        Returns:
+            np.ndarray: The velocity of the atmosphere at the given state and time
+        """
         dim = int(len(state) / 2)
         position = state[:dim]
-        velocity = state[dim:]
-        rot_2d_ccw = np.array([[0, 1], [-1, 0]])
         if dim == 2:
-            rot_radius = np.linalg.norm(position)
-            vel_direction = rot_2d_ccw @ position / (np.linalg.norm(position))
+            pos_norm = np.linalg.norm(position)
+            rot_radius = pos_norm
+            vel_direction =  - AtmosphereModel._rot_2d_ccw @ position / pos_norm
         if dim == 3:
             rot_radius = np.sqrt(np.sum(position ** 2) + state[2] ** 2)
-            vel_direction = np.array([*(rot_2d_ccw @ position[:2] / (np.linalg.norm(position[:2]))), 0])
+            vel_direction = np.array([*(AtmosphereModel._rot_2d_ccw @ position[:2] / (np.linalg.norm(position[:2]))), 0])
         speed = EARTH_ROTATIONAL_SPEED * rot_radius
-        return velocity + speed * vel_direction
+        return speed * vel_direction
 
     def derivative(self, state: np.ndarray, time: float) -> float:
         raise NotImplementedError(
