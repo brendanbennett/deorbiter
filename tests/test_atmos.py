@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 
 from deorbit.data_models.atmos import SimpleAtmosKwargs, get_model_for_atmos
 from deorbit.simulator.atmos import (
@@ -61,3 +62,30 @@ def test_adding_sim_subclass():
 
     assert model_name in AtmosphereModel._models
     assert model_name in get_available_atmos_models()
+    
+def test_rotation():
+    state = np.array((1, 0, 0, 0))
+    model_kwargs = get_model_for_atmos("coesa_atmos_fast")()
+    atmos_model = AtmosphereModel(model_kwargs)
+    rotated = atmos_model._rot_2d_ccw @ state[:2]
+    assert np.all(rotated == np.array([0, 1]))
+
+def test_atmos_velocity_2d():
+    state = np.array((EARTH_RADIUS + 8000, 0, 0, 0))
+    time = 0.0
+    model_kwargs = get_model_for_atmos("coesa_atmos_fast")()
+    atmos_model = AtmosphereModel(model_kwargs)
+    velocity = atmos_model.velocity(state=state, time=time)
+    assert velocity[0] == 0
+    assert np.abs(velocity[1] - 450) < 50
+    
+def test_atmos_velocity_3d():
+    state = np.array((EARTH_RADIUS + 8000, 0, 0, 0, 0, 0))
+    time = 0.0
+    model_kwargs = get_model_for_atmos("coesa_atmos_fast")()
+    atmos_model = AtmosphereModel(model_kwargs)
+    velocity = atmos_model.velocity(state=state, time=time)
+    assert velocity[0] == 0
+    assert velocity[2] == 0
+    assert np.abs(velocity[1] - 450) < 50
+

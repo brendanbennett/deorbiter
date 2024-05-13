@@ -28,7 +28,7 @@ class AtmosphereModel(ABC):
     """
 
     _models = {}
-    _rot_2d_ccw = np.array([[0, 1], [-1, 0]])
+    _rot_2d_ccw = np.array([[0, -1], [1, 0]])
 
     def __init_subclass__(cls, model_name: str = None, **kwargs):
         # This special method is called when a _subclass_ is defined in the code.
@@ -67,7 +67,7 @@ class AtmosphereModel(ABC):
         if dim == 2:
             pos_norm = np.linalg.norm(position)
             rot_radius = pos_norm
-            vel_direction =  - AtmosphereModel._rot_2d_ccw @ position / pos_norm
+            vel_direction = AtmosphereModel._rot_2d_ccw @ position / pos_norm
         if dim == 3:
             rot_radius = np.sqrt(np.sum(position ** 2) + state[2] ** 2)
             vel_direction = np.array([*(AtmosphereModel._rot_2d_ccw @ position[:2] / (np.linalg.norm(position[:2]))), 0])
