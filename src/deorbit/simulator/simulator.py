@@ -110,7 +110,7 @@ class Simulator(ABC):
 
         self.states: list[npt.NDArray] = list()
         self.times: list[float] = list()
-        self._atmosphere_model: Callable = None
+        self._atmosphere_model: AtmosphereModel = None
         self.sim_method_kwargs: MethodKwargs = config.simulation_method_kwargs
         self.time_of_last_run = datetime.now()
         self._noise_types = None
