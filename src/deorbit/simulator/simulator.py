@@ -38,35 +38,7 @@ from deorbit.utils.dataio import save_sim_data_and_config
 
 
 class Simulator(ABC):
-    """
-    Base class for simulators.
-
-    Attributes:
-        states (list): List of state vectors.
-        times (list): List of simulation times.
-        _atmosphere_model (Callable): Atmosphere model used for the simulation.
-        sim_method_kwargs (MethodKwargs): Configuration for the simulation method.
-
-    Methods:
-        export_config(self) -> SimConfig: Returns a configuration object for the simulation.
-        set_initial_conditions(self, state: npt.NDArray, time: float): Sets the initial conditions for the simulation.
-        set_atmosphere_model(self, model_kwargs: AtmosKwargs): Sets the atmosphere model for the simulation.
-        atmosphere(self, state: npt.NDArray, time: float) -> float: Calculates the atmosphere density at a given state and time.
-        run(self, steps: int = None): Runs the simulation for a specified number of steps.
-        gather_data(self) -> SimData: Generates a data object containing the simulation data and configuration.
-        save_data(self, save_dir_path: str) -> Path: Saves the simulation data to a specified directory.
-
-    Examples:
-    ```
-    config = deorbit.data_models.sim.SimConfig(
-        initial_state=(deorbit.constants.EARTH_RADIUS + 100000, 0, 0, 8000),
-        simulation_method_kwargs=deorbit.data_models.methods.RK4Kwargs(time_step=0.1),
-        atmosphere_model_kwargs=deorbit.data_models.atmos.CoesaFastKwargs()
-    )
-    sim = Simulator(config)
-    sim.run(150000)
-    ```
-    """
+    """Base class for simulators."""
 
     _methods: dict = {}
     _available_noise_types = ["gaussian", "impulse"]
@@ -115,7 +87,7 @@ class Simulator(ABC):
         self.time_of_last_run = datetime.now()
         self._noise_types = None
 
-        self.set_atmosphere_model(config.atmosphere_model_kwargs)
+        self._set_atmosphere_model(config.atmosphere_model_kwargs)
         self.set_initial_conditions(config.initial_state, config.initial_time)
 
     def export_config(self) -> SimConfig:
@@ -154,7 +126,11 @@ class Simulator(ABC):
         self.states.append(state)
         self.times.append(time)
 
-    def set_atmosphere_model(self, model_kwargs: AtmosKwargs) -> None:
+    def _set_atmosphere_model(self, model_kwargs: AtmosKwargs) -> None:
+        """Sets the atmosphere model for the simulation.
+        
+        :param model_kwargs: The configuration for the atmosphere model.
+        """
         model_name = model_kwargs.atmos_name
         raise_for_invalid_atmos_model(model_name)
         self._atmosphere_model: AtmosphereModel = AtmosphereModel(model_kwargs)
@@ -259,18 +235,31 @@ class Simulator(ABC):
         self.times.append(self.times[-1] + self.time_step)
 
     def _objective_function(self, state: npt.NDArray, time: float) -> npt.NDArray:
-        """The function that gives the derivative our state vector x' = f(x,t).
-        Returns a flat array (x1', x2', x3', v1', v2', v3')"""
+        """The function that gives the derivative our state vector x' = f(x,t) and defines our ODE.
+        Returns a flat array (position', velocity')
+        
+        :param state: The state vector.
+        :param time: The simulation time.
+        :return: The derivative of the state vector.
+        """
         accel = self._calculate_accel(state, time)
         return np.concatenate((state[self.dim :], accel))
 
     def is_terminal(self, state: npt.NDArray) -> bool:
+        """Checks if the satellite has impacted the Earth.
+        
+        :param state: The state vector.
+        """
         return np.linalg.norm(self._pos_from_state(state)) <= EARTH_RADIUS
 
     @abstractmethod
     def _run_method(self, steps: int | None) -> None: ...
 
-    def run(self, steps: int = None):
+    def run(self, steps: int = None) -> None:
+        """Runs the simulation for a specified number of steps. If steps is not provided, runs until the satellite impacts the Earth.
+        
+        :param steps: The number of steps to run the simulation for. Optional.
+        """
         self.time_of_last_run = datetime.now()
         start_time = thread_time_ns()
 
@@ -287,7 +276,11 @@ class Simulator(ABC):
         print(f"Simulation finished in {elapsed_time:.5f} seconds")
 
     @property
-    def time_step(self):
+    def time_step(self) -> float:
+        """The time step for the simulation.
+        
+        :return: The time step for the simulation.
+        """
         return self.sim_method_kwargs.time_step
 
     @time_step.setter
@@ -295,23 +288,25 @@ class Simulator(ABC):
         self.sim_method_kwargs.time_step = value
 
     @property
-    def dim(self):
+    def dim(self) -> int:
+        """The dimension of the simulation. 2 for 2D, 3 for 3D.
+        
+        :return: The dimension of the simulation.
+        """
         return self.sim_method_kwargs.dimension
 
     @property
     def noise_types(self) -> dict[str, NoiseKwargs]:
         """Returns a dictionary of noise types and their parameters. Empty dict if no noise is present.
 
-        Returns:
-            dict[str, NoiseKwargs]: Dictionary of noise types and their kwargs models.
+        :return: The noise types and their parameters.
         """
         return self.sim_method_kwargs.noise_types
 
     def gather_data(self) -> SimData:
         """Generates a portable data object containing all the simulation data reqiured to save.
 
-        Returns:
-            SimData: pydantic data model containing both simulated data and config.
+        :return: The simulation data object.
         """
         states = np.array(self.states)
         assert self.dim * 2 == states.shape[1]
@@ -339,14 +334,14 @@ class Simulator(ABC):
         return data
 
     def save_data(
-        self, save_dir_path: str, overwrite: bool = True, format: str = "json"
+        self, save_dir_path: str | Path, overwrite: bool = True, format: str = "pkl"
     ) -> Path:
-        """Saves simulation data to [save_dir_path] directory as defined in the SimData data model.
+        """Saves simulation data to `save_dir_path` directory in the `format` format.
 
-        File name format: sim_data_[unix time in ms].json
-
-        Args:
-            save_dir_path (Path like): Data directory to save json file.
+        :param save_dir_path: The directory to save the data to. Creates the directory if it does not exist.
+        :param overwrite: Whether to overwrite existing files. Defaults to True.
+        :param format: The format to save the data in. One of "json", "pkl". Defaults to "pkl".
+        :return: The path to the save directory. Used to load the data later.
         """
         save_path = save_sim_data_and_config(
             self.gather_data(),

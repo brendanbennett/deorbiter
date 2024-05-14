@@ -14,7 +14,7 @@ Simulator
 ---------
 
 .. autoclass:: deorbit.simulator.Simulator
-   :members: __init__, run
+   :members:
 
    Base class for simulation classes. Defines the framework within which different numerical methods can be implemented.
 
