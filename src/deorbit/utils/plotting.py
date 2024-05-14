@@ -51,11 +51,11 @@ def plot_trajectories(true_traj, estimated_traj = None, observations = None, tit
         plt.show()
         plt.close()
 
-def plot_height(true_traj, times, estimated_traj = None, observations = None, title = 'Height'):
+def plot_height(true_traj, times, estimated_traj = None, observations = None, observation_times = None, title = 'Height'):
     fig, ax = plt.subplots()
     ax.plot(np.array(times) / 60, (np.linalg.norm(true_traj, axis=1) - deorbit.constants.EARTH_RADIUS)/1000, label = 'True Height')
     if observations is not None:
-        ax.scatter(np.array(times)/ 60, (np.linalg.norm(observations, axis = 1) -deorbit.constants.EARTH_RADIUS)/1000, marker='x', color='r', label='Noisy Measurements')
+        ax.scatter(np.array(observation_times)/ 60, (np.linalg.norm(observations, axis = 1) -deorbit.constants.EARTH_RADIUS)/1000, marker='x', color='r', label='Noisy Measurements')
     if estimated_traj is not None:
         ax.plot(np.array(times)/ 60, (np.linalg.norm(estimated_traj, axis = 1) -deorbit.constants.EARTH_RADIUS)/1000, label='Estimated Trajectory', linestyle='--')
     ax.set_title(title)
