@@ -4,6 +4,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
+import deorbit
 
 def plot_trajectories(true_traj, estimated_traj = None, observations = None, title="Trajectories"):
     if len(true_traj[0]) == 2:
@@ -16,6 +17,8 @@ def plot_trajectories(true_traj, estimated_traj = None, observations = None, tit
         ax.set_title(title)
         ax.set_xlabel('Position X')
         ax.set_ylabel('Position Y')
+        earth = plt.Circle((0, 0), radius=deorbit.constants.EARTH_RADIUS, fill=False)
+        ax.add_patch(earth)
         ax.legend()
         plt.show()
         plt.close()
@@ -34,6 +37,24 @@ def plot_trajectories(true_traj, estimated_traj = None, observations = None, tit
         ax.legend()
         plt.show()
         plt.close()
+
+def plot_height(sim_data, estimated_traj = None, observations = None, title = 'Height'):
+    true_traj = sim_data.state_array()[:, :2]
+    times = sim_data.times
+    if len(true_traj[0]) == 2:
+        fig, ax = plt.subplots()
+        ax.plot(np.array(times) / 60, (np.linalg.norm(true_traj[:, :2], axis=1) - deorbit.constants.EARTH_RADIUS)/1000, label = 'True Height')
+        if observations is not None:
+            ax.scatter(np.array(times)/ 60, (np.linalg.norm(observations[:, 0], observations[:, 1]) -deorbit.constants.EARTH_RADIUS)/1000, marker='x', color='r', label='Noisy Measurements')
+        if estimated_traj is not None:
+            ax.plot(np.array(times)/ 60, (np.linalg.norm(estimated_traj[:, 0], estimated_traj[:, 1]) -deorbit.constants.EARTH_RADIUS)/1000, label='Estimated Trajectory', linestyle='--')
+        ax.set_title(title)
+        ax.set_xlabel('Time (m)')
+        ax.set_ylabel('Height')
+        ax.legend()
+        plt.show()
+        plt.close()
+
     
 def plot_error(true_traj, estimated_traj, title="Error in Trajectories"):
     true_traj = np.array(true_traj)
