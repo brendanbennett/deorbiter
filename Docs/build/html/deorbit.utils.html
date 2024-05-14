@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>deorbit.utils package &mdash; ES98B 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=f2a433a1"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            ES98B
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">deorbit.utils package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-deorbit.utils.constants">deorbit.utils.constants module</a></li>
+<li><a class="reference internal" href="#module-deorbit.utils.coords">deorbit.utils.coords module</a><ul>
+<li><a class="reference internal" href="#deorbit.utils.coords.cart_from_latlong"><code class="docutils literal notranslate"><span class="pre">cart_from_latlong()</span></code></a></li>
+<li><a class="reference internal" href="#deorbit.utils.coords.latlong_from_cart"><code class="docutils literal notranslate"><span class="pre">latlong_from_cart()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-deorbit.utils.dataio">deorbit.utils.dataio module</a><ul>
+<li><a class="reference internal" href="#deorbit.utils.dataio.DataIO"><code class="docutils literal notranslate"><span class="pre">DataIO</span></code></a><ul>
+<li><a class="reference internal" href="#deorbit.utils.dataio.DataIO.load"><code class="docutils literal notranslate"><span class="pre">DataIO.load()</span></code></a></li>
+<li><a class="reference internal" href="#deorbit.utils.dataio.DataIO.name"><code class="docutils literal notranslate"><span class="pre">DataIO.name</span></code></a></li>
+<li><a class="reference internal" href="#deorbit.utils.dataio.DataIO.save"><code class="docutils literal notranslate"><span class="pre">DataIO.save()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#deorbit.utils.dataio.JSONIO"><code class="docutils literal notranslate"><span class="pre">JSONIO</span></code></a><ul>
+<li><a class="reference internal" href="#deorbit.utils.dataio.JSONIO.load"><code class="docutils literal notranslate"><span class="pre">JSONIO.load()</span></code></a></li>
+<li><a class="reference internal" href="#deorbit.utils.dataio.JSONIO.name"><code class="docutils literal notranslate"><span class="pre">JSONIO.name</span></code></a></li>
+<li><a class="reference internal" href="#deorbit.utils.dataio.JSONIO.save"><code class="docutils literal notranslate"><span class="pre">JSONIO.save()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#deorbit.utils.dataio.PickleIO"><code class="docutils literal notranslate"><span class="pre">PickleIO</span></code></a><ul>
+<li><a class="reference internal" href="#deorbit.utils.dataio.PickleIO.load"><code class="docutils literal notranslate"><span class="pre">PickleIO.load()</span></code></a></li>
+<li><a class="reference internal" href="#deorbit.utils.dataio.PickleIO.name"><code class="docutils literal notranslate"><span class="pre">PickleIO.name</span></code></a></li>
+<li><a class="reference internal" href="#deorbit.utils.dataio.PickleIO.save"><code class="docutils literal notranslate"><span class="pre">PickleIO.save()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#deorbit.utils.dataio.load_sim_config"><code class="docutils literal notranslate"><span class="pre">load_sim_config()</span></code></a></li>
+<li><a class="reference internal" href="#deorbit.utils.dataio.load_sim_data"><code class="docutils literal notranslate"><span class="pre">load_sim_data()</span></code></a></li>
+<li><a class="reference internal" href="#deorbit.utils.dataio.save_sim_data_and_config"><code class="docutils literal notranslate"><span class="pre">save_sim_data_and_config()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-deorbit.utils.plotting">deorbit.utils.plotting module</a><ul>
+<li><a class="reference internal" href="#deorbit.utils.plotting.Three_Dim_Slice_Trajectory"><code class="docutils literal notranslate"><span class="pre">Three_Dim_Slice_Trajectory()</span></code></a></li>
+<li><a class="reference internal" href="#deorbit.utils.plotting.plot_absolute_error"><code class="docutils literal notranslate"><span class="pre">plot_absolute_error()</span></code></a></li>
+<li><a class="reference internal" href="#deorbit.utils.plotting.plot_error"><code class="docutils literal notranslate"><span class="pre">plot_error()</span></code></a></li>
+<li><a class="reference internal" href="#deorbit.utils.plotting.plot_position_error"><code class="docutils literal notranslate"><span class="pre">plot_position_error()</span></code></a></li>
+<li><a class="reference internal" href="#deorbit.utils.plotting.plot_trajectories"><code class="docutils literal notranslate"><span class="pre">plot_trajectories()</span></code></a></li>
+<li><a class="reference internal" href="#deorbit.utils.plotting.plot_velocity_error"><code class="docutils literal notranslate"><span class="pre">plot_velocity_error()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-deorbit.utils">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ES98B</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">deorbit.utils package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/deorbit.utils.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="deorbit-utils-package">
+<h1>deorbit.utils package<a class="headerlink" href="#deorbit-utils-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-deorbit.utils.constants">
+<span id="deorbit-utils-constants-module"></span><h2>deorbit.utils.constants module<a class="headerlink" href="#module-deorbit.utils.constants" title="Link to this heading"></a></h2>
+</section>
+<section id="module-deorbit.utils.coords">
+<span id="deorbit-utils-coords-module"></span><h2>deorbit.utils.coords module<a class="headerlink" href="#module-deorbit.utils.coords" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="deorbit.utils.coords.cart_from_latlong">
+<span class="sig-prename descclassname"><span class="pre">deorbit.utils.coords.</span></span><span class="sig-name descname"><span class="pre">cart_from_latlong</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">latlong</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">6371000</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#deorbit.utils.coords.cart_from_latlong" title="Link to this definition"></a></dt>
+<dd><p>Given a sequence of latitude and longitude, calculates the cartesian coordinates of a point on the Earth’s surface.
+This does not account for the rotation of the Earth; we assume 0N, 0E is at (1, 0, 0).
+If working in 2D, latlong should be a scalar representing longitude.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="deorbit.utils.coords.latlong_from_cart">
+<span class="sig-prename descclassname"><span class="pre">deorbit.utils.coords.</span></span><span class="sig-name descname"><span class="pre">latlong_from_cart</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cart</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#deorbit.utils.coords.latlong_from_cart" title="Link to this definition"></a></dt>
+<dd><p>Given a sequence of cartesian coordinates, calculates the latitude and longitude of a point on the Earth’s surface.
+This point is the intersection of the line from the origin to the point and the Earth’s surface.
+This does not account for the rotation of the Earth; we assume 0N, 0E is at (1, 0, 0).
+If working in 2D, only returns longitude.</p>
+</dd></dl>
+
+</section>
+<section id="module-deorbit.utils.dataio">
+<span id="deorbit-utils-dataio-module"></span><h2>deorbit.utils.dataio module<a class="headerlink" href="#module-deorbit.utils.dataio" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="deorbit.utils.dataio.DataIO">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">deorbit.utils.dataio.</span></span><span class="sig-name descname"><span class="pre">DataIO</span></span><a class="headerlink" href="#deorbit.utils.dataio.DataIO" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="deorbit.utils.dataio.DataIO.load">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">type</span><span class="p"><span class="pre">[</span></span><span class="pre">BaseModel</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">BaseModel</span></span></span><a class="headerlink" href="#deorbit.utils.dataio.DataIO.load" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="deorbit.utils.dataio.DataIO.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">None</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#deorbit.utils.dataio.DataIO.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="deorbit.utils.dataio.DataIO.save">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">BaseModel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#deorbit.utils.dataio.DataIO.save" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="deorbit.utils.dataio.JSONIO">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">deorbit.utils.dataio.</span></span><span class="sig-name descname"><span class="pre">JSONIO</span></span><a class="headerlink" href="#deorbit.utils.dataio.JSONIO" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#deorbit.utils.dataio.DataIO" title="deorbit.utils.dataio.DataIO"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataIO</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="deorbit.utils.dataio.JSONIO.load">
+<span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">type</span><span class="p"><span class="pre">[</span></span><span class="pre">BaseModel</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">BaseModel</span></span></span><a class="headerlink" href="#deorbit.utils.dataio.JSONIO.load" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="deorbit.utils.dataio.JSONIO.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">None</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'json'</span></em><a class="headerlink" href="#deorbit.utils.dataio.JSONIO.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="deorbit.utils.dataio.JSONIO.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">BaseModel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#deorbit.utils.dataio.JSONIO.save" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="deorbit.utils.dataio.PickleIO">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">deorbit.utils.dataio.</span></span><span class="sig-name descname"><span class="pre">PickleIO</span></span><a class="headerlink" href="#deorbit.utils.dataio.PickleIO" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#deorbit.utils.dataio.DataIO" title="deorbit.utils.dataio.DataIO"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataIO</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="deorbit.utils.dataio.PickleIO.load">
+<span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">BaseModel</span></span></span><a class="headerlink" href="#deorbit.utils.dataio.PickleIO.load" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="deorbit.utils.dataio.PickleIO.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">None</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'pkl'</span></em><a class="headerlink" href="#deorbit.utils.dataio.PickleIO.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="deorbit.utils.dataio.PickleIO.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">BaseModel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#deorbit.utils.dataio.PickleIO.save" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="deorbit.utils.dataio.load_sim_config">
+<span class="sig-prename descclassname"><span class="pre">deorbit.utils.dataio.</span></span><span class="sig-name descname"><span class="pre">load_sim_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">silent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="deorbit.data_models.html#deorbit.data_models.sim.SimConfig" title="deorbit.data_models.sim.SimConfig"><span class="pre">SimConfig</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="headerlink" href="#deorbit.utils.dataio.load_sim_config" title="Link to this definition"></a></dt>
+<dd><p>Load the simulation config from the provided directory path.
+The config file is expected to be in the format <cite>config.pkl</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>save_path</strong> (<em>str</em>) – Directory path containing the simulation config. e.g. <cite>./data/sim_data_1/</cite></p></li>
+<li><p><strong>silent</strong> (<em>bool</em>) – If True, suppresses the FileNotFoundError exception if save_path
+is not found. Default: True</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>NotADirectoryError</strong> – <cite>save_path</cite> is not a directory</p></li>
+<li><p><strong>FileNotFoundError</strong> – No config file found in <cite>save_path</cite></p></li>
+</ul>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Loaded simulation config</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="deorbit.data_models.html#deorbit.data_models.sim.SimConfig" title="deorbit.data_models.sim.SimConfig">SimConfig</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="deorbit.utils.dataio.load_sim_data">
+<span class="sig-prename descclassname"><span class="pre">deorbit.utils.dataio.</span></span><span class="sig-name descname"><span class="pre">load_sim_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">silent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="deorbit.data_models.html#deorbit.data_models.sim.SimData" title="deorbit.data_models.sim.SimData"><span class="pre">SimData</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="headerlink" href="#deorbit.utils.dataio.load_sim_data" title="Link to this definition"></a></dt>
+<dd><p>Load the simulation data from the provided directory path.
+The simulation data file is expected to be in the format <cite>data.[format]</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>save_path</strong> (<em>str</em>) – Directory path containing the simulation data. e.g. <cite>./data/sim_data_1/</cite></p></li>
+<li><p><strong>silent</strong> (<em>bool</em>) – If True, suppresses the FileNotFoundError exception if save_path
+is not found. Default: True</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>NotADirectoryError</strong> – <cite>save_path</cite> is not a directory</p></li>
+<li><p><strong>FileNotFoundError</strong> – No data file found in <cite>save_path</cite></p></li>
+</ul>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Loaded simulation data</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="deorbit.data_models.html#deorbit.data_models.sim.SimData" title="deorbit.data_models.sim.SimData">SimData</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="deorbit.utils.dataio.save_sim_data_and_config">
+<span class="sig-prename descclassname"><span class="pre">deorbit.utils.dataio.</span></span><span class="sig-name descname"><span class="pre">save_sim_data_and_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="deorbit.data_models.html#deorbit.data_models.sim.SimData" title="deorbit.data_models.sim.SimData"><span class="pre">SimData</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="deorbit.data_models.html#deorbit.data_models.sim.SimConfig" title="deorbit.data_models.sim.SimConfig"><span class="pre">SimConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">format</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'pkl'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Path</span></span></span><a class="headerlink" href="#deorbit.utils.dataio.save_sim_data_and_config" title="Link to this definition"></a></dt>
+<dd><p>Saves the simulation data <cite>data</cite> and config <cite>config</cite> in the provided format.
+The config and data are saved in separate files in a new directory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<a class="reference internal" href="deorbit.data_models.html#deorbit.data_models.sim.SimData" title="deorbit.data_models.sim.SimData"><em>SimData</em></a>) – Data to be saved</p></li>
+<li><p><strong>save_path</strong> (<em>str</em>) – Directory where the <cite>data</cite> and <cite>config</cite> files will be saved.</p></li>
+<li><p><strong>format</strong> (<em>str</em>) – Data file format to use. Default: <cite>pkl</cite></p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>NotADirectoryError</strong> – Raised if <cite>save_path</cite> exists and is not a valid directory.</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Path to the saved data file.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Path</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-deorbit.utils.plotting">
+<span id="deorbit-utils-plotting-module"></span><h2>deorbit.utils.plotting module<a class="headerlink" href="#module-deorbit.utils.plotting" title="Link to this heading"></a></h2>
+<p>This module encapsulates various plotting methods for visualizing trajectories, errors, and other relevant data associated with the simulation and prediction of satellite trajectories.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="deorbit.utils.plotting.Three_Dim_Slice_Trajectory">
+<span class="sig-prename descclassname"><span class="pre">deorbit.utils.plotting.</span></span><span class="sig-name descname"><span class="pre">Three_Dim_Slice_Trajectory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">true_traj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">estimated_traj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observation_states</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observation_times</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sim_times</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Three_Dim_crash_coords</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#deorbit.utils.plotting.Three_Dim_Slice_Trajectory" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="deorbit.utils.plotting.plot_absolute_error">
+<span class="sig-prename descclassname"><span class="pre">deorbit.utils.plotting.</span></span><span class="sig-name descname"><span class="pre">plot_absolute_error</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">true_traj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">estimated_traj</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#deorbit.utils.plotting.plot_absolute_error" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="deorbit.utils.plotting.plot_error">
+<span class="sig-prename descclassname"><span class="pre">deorbit.utils.plotting.</span></span><span class="sig-name descname"><span class="pre">plot_error</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">true_traj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">estimated_traj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Error</span> <span class="pre">in</span> <span class="pre">Trajectories'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#deorbit.utils.plotting.plot_error" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="deorbit.utils.plotting.plot_position_error">
+<span class="sig-prename descclassname"><span class="pre">deorbit.utils.plotting.</span></span><span class="sig-name descname"><span class="pre">plot_position_error</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">true_traj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">estimated_traj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observation_states</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#deorbit.utils.plotting.plot_position_error" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="deorbit.utils.plotting.plot_trajectories">
+<span class="sig-prename descclassname"><span class="pre">deorbit.utils.plotting.</span></span><span class="sig-name descname"><span class="pre">plot_trajectories</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">true_traj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">estimated_traj</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Trajectories'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#deorbit.utils.plotting.plot_trajectories" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="deorbit.utils.plotting.plot_velocity_error">
+<span class="sig-prename descclassname"><span class="pre">deorbit.utils.plotting.</span></span><span class="sig-name descname"><span class="pre">plot_velocity_error</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">true_traj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">estimated_traj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Error</span> <span class="pre">in</span> <span class="pre">Velocity'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#deorbit.utils.plotting.plot_velocity_error" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-deorbit.utils">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-deorbit.utils" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, ES98 Group-Mir.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
