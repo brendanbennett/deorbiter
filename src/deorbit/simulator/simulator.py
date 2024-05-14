@@ -178,16 +178,19 @@ class Simulator(ABC):
         return self._atmosphere_model.density(state, time)
 
     def atmosphere_velocity(self, state: npt.NDArray, time: float) -> npt.NDArray:
+        """Calculates the atmosphere velocity at a given state and time. Due to the Earth's rotation.
+
+        :param state: The state vector. The velocity component is not used.
+        :param time: The simulation time. Used only if the atmosphere model requires it.
+        :return: The atmosphere velocity vector.
+        """
         return self._atmosphere_model.velocity(state, time)
 
     def _gravity_accel(self, state: npt.NDArray) -> npt.NDArray:
         """Calculate acceleration by gravity.
-
-        Args:
-            state: (npt.NDArray)
-
-        Returns:
-            npt.NDArray: Acceleration by gravity vector
+        
+        :param state: The state vector.
+        :return: The acceleration vector.
         """
         position = state[: self.dim]
         radius = np.linalg.norm(position)
@@ -196,13 +199,10 @@ class Simulator(ABC):
     def _drag_accel(self, state: npt.NDArray, time: float) -> npt.NDArray:
         """Calculates acceleration on the satellite due to drag in a particular state.
         Uses the chosen atmosphere model to calculate air density.
-
-        Args:
-            state (npt.NDArray)
-            time (float)
-
-        Returns:
-            npt.NDArray: Acceleration by drag vector
+        
+        :param state: The state vector.
+        :param time: The simulation time.
+        :return: The drag acceleration vector.
         """
         relative_velocity = self._vel_from_state(state) - self.atmosphere_velocity(
             state, time
@@ -218,6 +218,12 @@ class Simulator(ABC):
         return accel
 
     def _calculate_accel(self, state: npt.NDArray, time: float) -> npt.NDArray:
+        """Calculates the acceleration on the satellite at a given state and time, due to gravity, drag and noise.
+        
+        :param state: The state vector.
+        :param time: The simulation time.
+        :return: The resultant acceleration vector.
+        """
         drag_accel = self._drag_accel(state=state, time=time)
         grav_accel = self._gravity_accel(state=state)
         # print(f"state {state} at time {time} has drag accel {np.linalg.norm(drag_accel)} \
@@ -246,6 +252,10 @@ class Simulator(ABC):
         return drag_accel + grav_accel + noise_accel
 
     def _step_time(self) -> None:
+        """Steps the internal simulation time by the time step.
+        
+        :return: None
+        """
         self.times.append(self.times[-1] + self.time_step)
 
     def _objective_function(self, state: npt.NDArray, time: float) -> npt.NDArray:
@@ -542,6 +552,18 @@ def generate_sim_config(
     sim_method_kwargs: dict | type[MethodKwargs] | None = None,
     atmos_kwargs: dict | type[AtmosKwargs] | None = None,
 ) -> SimConfig:
+    """Generates a simulation configuration object from the given parameters.
+    
+    :param sim_method: The name of the simulation method to use. One of: "euler", "adams_bashforth", "RK4".
+    :param atmos_model: The name of the atmosphere model to use. One of: "coesa_atmos", "coesa_atmos_fast", "zero_atmos", "icao_standard_atmos", "simple_atmos".
+    :param initial_state: The initial state vector in the form `(position, velocity)`. The dimension of the simulation is inferred from the length of this vector halved.
+    :param initial_time: The initial time. Optional, default `0.0`.
+    :param time_step: The time step for the simulation. Optional, default `0.1`.
+    :param noise_types: The types of noise to apply to the simulation. Optional.
+    :param sim_method_kwargs: The configuration for the simulation method. Optional.
+    :param atmos_kwargs: The configuration for the atmosphere model. Optional.
+    :return: The configuration object for the simulation.
+    """
     assert len(initial_state) % 2 == 0
 
     if noise_types is None:
@@ -620,6 +642,12 @@ def run_with_config(
     config: SimConfig,
     steps: int | None = None,
 ) -> Simulator:
+    """Runs a simulation with the given configuration.
+
+    :param config: The configuration object for the simulation.
+    :param steps: , defaults to None
+    :return: Completed :class:'Simulator' instance
+    """
     sim = Simulator(config)
     sim.run(steps=steps)
     return sim
@@ -636,6 +664,19 @@ def run(
     atmos_kwargs: dict | type[AtmosKwargs] | None = None,
     steps: int | None = None,
 ) -> Simulator:
+    """Runs a simulation with the given parameters.
+    
+    :param sim_method: The name of the simulation method to use. One of: "euler", "adams_bashforth", "RK4".
+    :param atmos_model: The name of the atmosphere model to use. One of: "coesa_atmos", "coesa_atmos_fast", "zero_atmos", "icao_standard_atmos", "simple_atmos".
+    :param initial_state: The initial state vector in the form `(position, velocity)`. The dimension of the simulation is inferred from the length of this vector halved.
+    :param initial_time: The initial time. Optional, default `0.0`.
+    :param time_step: The time step for the simulation. Optional, default `0.1`.
+    :param noise_types: The types of noise to apply to the simulation. Optional.
+    :param sim_method_kwargs: The configuration for the simulation method. Optional.
+    :param atmos_kwargs: The configuration for the atmosphere model. Optional.
+    :param steps: The number of steps to run the simulation for. Optional. Default is to run until the satellite impacts the Earth.
+    :return: Completed :class:'Simulator' instance.
+    """
     config = generate_sim_config(
         sim_method=sim_method,
         atmos_model=atmos_model,
