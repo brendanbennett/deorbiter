@@ -36,21 +36,21 @@ class Observer:
         self.radius: float = kwargs.get("radius", EARTH_RADIUS)
         self.rotation: float = kwargs.get("rotation", EARTH_ROTATIONAL_SPEED)
         self.number_of_radars: int = kwargs.get("number_of_radars", 1)
-        self.positions_of_radars: npt.NDArray = kwargs.get(
+        self.positions_of_radars: np.ndarray = kwargs.get(
             "positions_of_radars",
             self._default_radar_positions(self.number_of_radars, self.dim),
         )
         self.radar_variance_per_m: float = kwargs.get("radar_noise_factor", 0.1)
         self.observed_states: list[list[float]] | None = None
         self.observed_times: list[float] | None = None
-        self.observed_covariances: npt.NDArray = None
+        self.observed_covariances: np.ndarray = None
 
         if self.dim not in [2, 3]:
             raise ValueError("dim must be 2 or 3")
         self._radar_position_validator()
 
     @staticmethod
-    def _default_radar_positions(number_of_radars: int, dim: int) -> npt.NDArray:
+    def _default_radar_positions(number_of_radars: int, dim: int) -> np.ndarray:
         """
         Sets default radar positions, returns longitude and latitude of radars equally spaced around the equator.
         """
@@ -125,7 +125,9 @@ class Observer:
 
             for i, xi in enumerate(self.positions_of_radars):
                 x_radar, y_radar = cart_from_latlong(xi)
-                ax.scatter(x_radar, y_radar, color="r", marker="o", s=50, edgecolors="black")
+                ax.scatter(
+                    x_radar, y_radar, color="r", marker="o", s=50, edgecolors="black"
+                )
 
             ax.set_xlabel("X")
             ax.set_ylabel("Y")
@@ -173,7 +175,9 @@ class Observer:
         when the satellite has been observed by a radar station.
         """
         if sim_states.shape[1] != 2 * self.dim:
-            raise ValueError(f"Provided data is for a {int(sim_states.shape[1] / 2)}D simulation, but Observer is {self.dim}D.")
+            raise ValueError(
+                f"Provided data is for a {int(sim_states.shape[1] / 2)}D simulation, but Observer is {self.dim}D."
+            )
         times_observed = []
         states_observed = []
         covariances = []

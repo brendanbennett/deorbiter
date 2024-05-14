@@ -55,17 +55,17 @@ class AtmosphereModel(ABC):
         self.kwargs: AtmosKwargs = None
 
     @abstractmethod
-    def density(self, state: npt.NDArray, time: float) -> float: ...
+    def density(self, state: np.ndarray, time: float) -> float: ...
 
-    def velocity(self, state: npt.NDArray, time: float) -> npt.NDArray:
+    def velocity(self, state: np.ndarray, time: float) -> np.ndarray:
         """Calculate the velocity of the atmosphere as a result of the Earth's rotation at a given state (and time)
 
         Args:
-            state (npt.NDArray): The state of the object in the atmosphere
+            state (np.ndarray): The state of the object in the atmosphere
             time (float): The time at which the velocity is calculated
 
         Returns:
-            npt.NDArray: The velocity of the atmosphere at the given state and time
+            np.ndarray: The velocity of the atmosphere at the given state and time
         """
         dim = int(len(state) / 2)
         position = state[:dim]
@@ -88,7 +88,7 @@ class AtmosphereModel(ABC):
         speed = EARTH_ROTATIONAL_SPEED * rot_radius
         return speed * vel_direction
 
-    def derivative(self, state: npt.NDArray, time: float) -> float:
+    def derivative(self, state: np.ndarray, time: float) -> float:
         raise NotImplementedError(
             "Derivative not implemented for this atmosphere model"
         )
@@ -122,14 +122,14 @@ class ZeroAtmos(AtmosphereModel, model_name="zero_atmos"):
     """Generate zero atmospheric model
 
     Methods:
-        density(state: npt.NDArray, time: float) -> float: Density function taking state and time as input
+        density(state: np.ndarray, time: float) -> float: Density function taking state and time as input
         model_kwargs() -> dict: Returns model parameters
     """
 
     def __init__(self, kwargs: ZeroAtmosKwargs) -> None:
         self.kwargs: ZeroAtmosKwargs = kwargs
 
-    def density(self, state: npt.NDArray, time: float) -> float:
+    def density(self, state: np.ndarray, time: float) -> float:
         return 0
 
 
@@ -137,7 +137,7 @@ class SimpleAtmos(AtmosphereModel, model_name="simple_atmos"):
     """Generate simple atmospheric model
 
     Methods:
-        density(state: npt.NDArray, time: float) -> float: Density function taking state and time as input
+        density(state: np.ndarray, time: float) -> float: Density function taking state and time as input
         model_kwargs() -> dict: Returns model parameters
     """
 
@@ -151,7 +151,7 @@ class SimpleAtmos(AtmosphereModel, model_name="simple_atmos"):
         self.kwargs: SimpleAtmosKwargs = kwargs
 
     ## This function can be changed.
-    def density(self, state: npt.NDArray, time: float) -> float:
+    def density(self, state: np.ndarray, time: float) -> float:
         dim = int(len(state) / 2)
 
         return self.kwargs.surf_density * np.exp(
@@ -165,7 +165,7 @@ class IcaoAtmos(AtmosphereModel, model_name="icao_standard_atmos"):
         self._max_height = 81020
         self._density_at_max_height = _IcaoAtmosphere(self._max_height).density
 
-    def density(self, state: npt.NDArray, time: float) -> float:
+    def density(self, state: np.ndarray, time: float) -> float:
         dim = int(len(state) / 2)
         position = state[:dim]
 
@@ -188,7 +188,7 @@ class CoesaAtmos(AtmosphereModel, model_name="coesa_atmos"):
 
         self.kwargs: CoesaKwargs = kwargs
 
-    def density(self, state: npt.NDArray, time: float) -> float:
+    def density(self, state: np.ndarray, time: float) -> float:
         dim = int(len(state) / 2)
         position = state[:dim]
 
@@ -232,7 +232,7 @@ class CoesaAtmosFast(AtmosphereModel, model_name="coesa_atmos_fast"):
         sampled_derivatives = np.gradient(sampled_densities, 10**self.kwargs.precision)
         self._derivatives = dict(zip(sample_heights, sampled_derivatives))
 
-    def density(self, state: npt.NDArray, time: float) -> float:
+    def density(self, state: np.ndarray, time: float) -> float:
         dim = int(len(state) / 2)
         position = state[:dim]
 
@@ -253,7 +253,7 @@ class CoesaAtmosFast(AtmosphereModel, model_name="coesa_atmos_fast"):
             )
         return rho
 
-    def derivative(self, state: npt.NDArray, time: float) -> float:
+    def derivative(self, state: np.ndarray, time: float) -> float:
         # TODO: Fix this: has a bump
         dim = int(len(state) / 2)
         position = state[:dim]
