@@ -153,8 +153,15 @@ class Observer:
 
             ax.plot_surface(x, y, z, color="g", alpha=0.5)
 
+            # Calculate distance of each radar station from the viewer
+            distances = np.linalg.norm(self.positions_of_radars, axis=1)
+
+            # Normalize distances to range [0, 1]
+            normalized_distances = (distances - np.min(distances)) / (np.max(distances) - np.min(distances))
+
             for i, xi in enumerate(self.positions_of_radars):
                 x_radar, y_radar, z_radar = cart_from_latlong(xi)
+                alpha = 1 - normalized_distances[i]  # Adjust alpha based on normalized distance
                 ax.scatter(
                     x_radar,
                     y_radar,
@@ -163,6 +170,7 @@ class Observer:
                     marker="o",
                     s=50,
                     edgecolors="black",
+                    alpha = alpha
                 )
 
             ax.set_xlabel("X")
