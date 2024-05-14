@@ -34,26 +34,37 @@ def plot_trajectories(true_traj, estimated_traj = None, observations = None, tit
         ax.set_xlabel('Position X')
         ax.set_ylabel('Position Y')
         ax.set_zlabel('Position Z')
+
+        #plotting EARTH
+        r = deorbit.constants.EARTH_RADIUS
+        theta = np.linspace(0, 2 * np.pi, 100)
+        phi = np.linspace(0, np.pi, 100)
+        theta, phi = np.meshgrid(theta, phi)
+
+        x = r * np.sin(phi) * np.cos(theta)
+        y = r * np.sin(phi) * np.sin(theta)
+        z = r * np.cos(phi)
+
+        ax.plot_surface(x, y, z, color="g", alpha=0.5)
+
         ax.legend()
         plt.show()
         plt.close()
 
-def plot_height(sim_data, estimated_traj = None, observations = None, title = 'Height'):
-    true_traj = sim_data.state_array()[:, :2]
-    times = sim_data.times
-    if len(true_traj[0]) == 2:
-        fig, ax = plt.subplots()
-        ax.plot(np.array(times) / 60, (np.linalg.norm(true_traj[:, :2], axis=1) - deorbit.constants.EARTH_RADIUS)/1000, label = 'True Height')
-        if observations is not None:
-            ax.scatter(np.array(times)/ 60, (np.linalg.norm(observations[:, 0], observations[:, 1]) -deorbit.constants.EARTH_RADIUS)/1000, marker='x', color='r', label='Noisy Measurements')
-        if estimated_traj is not None:
-            ax.plot(np.array(times)/ 60, (np.linalg.norm(estimated_traj[:, 0], estimated_traj[:, 1]) -deorbit.constants.EARTH_RADIUS)/1000, label='Estimated Trajectory', linestyle='--')
-        ax.set_title(title)
-        ax.set_xlabel('Time (m)')
-        ax.set_ylabel('Height')
-        ax.legend()
-        plt.show()
-        plt.close()
+def plot_height(true_traj, times, estimated_traj = None, observations = None, title = 'Height'):
+    fig, ax = plt.subplots()
+    ax.plot(np.array(times) / 60, (np.linalg.norm(true_traj, axis=1) - deorbit.constants.EARTH_RADIUS)/1000, label = 'True Height')
+    if observations is not None:
+        ax.scatter(np.array(times)/ 60, (np.linalg.norm(observations, axis = 1) -deorbit.constants.EARTH_RADIUS)/1000, marker='x', color='r', label='Noisy Measurements')
+    if estimated_traj is not None:
+        ax.plot(np.array(times)/ 60, (np.linalg.norm(estimated_traj, axis = 1) -deorbit.constants.EARTH_RADIUS)/1000, label='Estimated Trajectory', linestyle='--')
+    ax.set_title(title)
+    ax.set_xlabel('Time (m)')
+    ax.set_ylabel('Height')
+    ax.legend()
+    plt.show()
+    plt.close()
+
 
     
 def plot_error(true_traj, estimated_traj, title="Error in Trajectories"):

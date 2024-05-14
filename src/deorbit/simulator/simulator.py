@@ -343,7 +343,14 @@ class EulerSimulator(Simulator, method_name="euler"):
 
     def _run_method(self, steps: int | None) -> None:
         """Simple forward euler integration technique"""
-        print(f"Running simulation with Euler integrator with {self.noise_types} noise")
+        if len(self.noise_types) == 0:
+            print(
+                f"Running simulation with Euler integrator without noise"
+            )
+        else:
+            print(
+                f"Running simulation with Euler integrator with {self.noise_types} noise"
+            )
         # Boilerplate code for stepping the simulation
         if steps is None:
             iters = 0
@@ -457,7 +464,14 @@ class RK4Simulator(Simulator, method_name="RK4"):
 
     def _run_method(self, steps: int | None) -> None:
         """4th order Runge Kutta Numerical Integration Method"""
-        print("Running simulation with RK4 integrator")
+        if len(self.noise_types) == 0:
+            print(
+                f"Running simulation with RK4 integrator without noise"
+            )
+        else:
+            print(
+                f"Running simulation with RK4 integrator with {self.noise_types} noise"
+            )
         iters = 0
         # Boilerplate code for stepping the simulation
         if steps is None:
@@ -510,6 +524,15 @@ def get_available_sim_methods() -> dict[str, type[Simulator]]:
         dict[str, subclass(Simulator)]: a dictionary of `{name: method class}`
     """
     return Simulator._methods
+
+# def get_available_noise_types() -> list[str, type[Simulator]]:
+#     """Python magic to find the names of implemented noise methods.
+
+#     Returns:
+#         list[str, subclass(Simulator)]: a list of `{name: noise class}`
+#     """
+#     return Simulator._available_noise_types
+
 
 
 def generate_sim_config(
