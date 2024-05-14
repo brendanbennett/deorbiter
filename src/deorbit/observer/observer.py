@@ -57,19 +57,13 @@ class Observer:
         if dim == 3:
             rad_default_positions = np.zeros(shape=(number_of_radars, 2))
 
+            #transform to get uniform coverage of earth
             indices = np.arange(0, number_of_radars, dtype = float) + 0.5
 
             random_theta_sample = np.arcsin(1-2*indices/number_of_radars)
             random_phi_sample = np.pi*(1 + 5**0.5)*indices
 
-    
-            # positions in spherical coordinates
             rad_default_positions = np.stack((random_theta_sample, random_phi_sample), axis=1)
-    
-            # Convert spherical coordinates to Cartesian coordinates
-           # x = radii * np.sin(inclination_angles) * np.cos(azimuthal_angles)
-           # y = radii * np.sin(inclination_angles) * np.sin(azimuthal_angles)
-            #z = radii * np.cos(inclination_angles)
 
         elif dim == 2:
             rad_default_positions = np.linspace(
