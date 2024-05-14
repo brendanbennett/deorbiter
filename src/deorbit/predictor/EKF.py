@@ -86,10 +86,10 @@ class EKF:
             
             # PROBLEM: x_dot and y_dot can be zero, which will cause a division by zero error,
             # leading to P being NaN
-            jacobian[0, 0] = x_dot_dot / x_dot
-            jacobian[0, 1] = x_dot_dot / y_dot
-            jacobian[1, 0] = y_dot_dot / x_dot
-            jacobian[1, 1] = y_dot_dot / y_dot
+            # jacobian[0, 0] = x_dot_dot / x_dot
+            # jacobian[0, 1] = x_dot_dot / y_dot
+            # jacobian[1, 0] = y_dot_dot / x_dot
+            # jacobian[1, 1] = y_dot_dot / y_dot
 
             jacobian[0, 2] = 1
             jacobian[1, 3] = 1
@@ -123,15 +123,15 @@ class EKF:
             drho_dz = atmos.derivative(state, 0) * (z / r)
 
             # State transition Jacobian part
-            jacobian[0, 0] = x_dot_dot / x_dot
-            jacobian[0, 1] = x_dot_dot / y_dot
-            jacobian[0, 2] = x_dot_dot / z_dot
-            jacobian[1, 0] = y_dot_dot / x_dot
-            jacobian[1, 1] = y_dot_dot / y_dot
-            jacobian[1, 2] = y_dot_dot / z_dot
-            jacobian[2, 0] = z_dot_dot / x_dot
-            jacobian[2, 1] = z_dot_dot / y_dot
-            jacobian[2, 2] = z_dot_dot / z_dot
+            # jacobian[0, 0] = x_dot_dot / x_dot
+            # jacobian[0, 1] = x_dot_dot / y_dot
+            # jacobian[0, 2] = x_dot_dot / z_dot
+            # jacobian[1, 0] = y_dot_dot / x_dot
+            # jacobian[1, 1] = y_dot_dot / y_dot
+            # jacobian[1, 2] = y_dot_dot / z_dot
+            # jacobian[2, 0] = z_dot_dot / x_dot
+            # jacobian[2, 1] = z_dot_dot / y_dot
+            # jacobian[2, 2] = z_dot_dot / z_dot
 
             jacobian[0, 3] = 1
             jacobian[1, 4] = 1
@@ -215,7 +215,7 @@ class EKF:
 
         return x_hat, P
 
-    def run(self, observations, dt, Q, R, P, H):
+    def run(self, observations, dt, Q, R, P, H, steps=None):
         """Runs the Extended Kalman Filter on the given observations.
 
         Args:
