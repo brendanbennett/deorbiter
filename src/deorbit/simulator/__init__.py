@@ -1,3 +1,17 @@
+"""This module contains the implementation of various simulation techniques for satellite deorbiting scenarios, employing different numerical methods.
+
+:synopsis: functions and classes for simulating satellite deorbiting.
+
+Module Contents
+---------------
+
+The module includes the following main components:
+
+- **Simulator**: An abstract base class for all simulators.
+- **EulerSimulator**, **AdamsBashforthSimulator**, **RK4Simulator**: Subclasses of Simulator that implement specific numerical methods.
+- **Utility functions**: A set of functions to validate and retrieve simulation settings and run simulations with specific configurations.
+"""
+
 import deorbit.simulator.atmos as atmos
 
 from .atmos import get_available_atmos_models

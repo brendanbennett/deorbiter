@@ -1,9 +1,3 @@
-"""
-.. module:: simulator
-    :platform: Unix, Windows
-    :synopsis: functions and classes for simulating satellite deorbiting.
-"""
-
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path

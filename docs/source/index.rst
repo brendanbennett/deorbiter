@@ -13,7 +13,8 @@ It is designed to be easy to use and flexible, and is suitable for a wide range 
    :maxdepth: 2
    :caption: Contents:
 
-
+   simulator
+   predictor
 
 Indices and tables
 ==================
