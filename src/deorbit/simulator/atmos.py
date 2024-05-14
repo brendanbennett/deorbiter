@@ -69,7 +69,7 @@ class AtmosphereModel(ABC):
             rot_radius = pos_norm
             vel_direction = AtmosphereModel._rot_2d_ccw @ position / pos_norm
         if dim == 3:
-            rot_radius = np.sqrt(np.sum(position ** 2) + state[2] ** 2)
+            rot_radius = np.sqrt(np.sum(position ** 2) - state[2] ** 2)
             vel_direction = np.array([*(AtmosphereModel._rot_2d_ccw @ position[:2] / (np.linalg.norm(position[:2]))), 0])
         speed = EARTH_ROTATIONAL_SPEED * rot_radius
         return speed * vel_direction
