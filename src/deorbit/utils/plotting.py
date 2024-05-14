@@ -1,17 +1,4 @@
-"""
-This module, EKF_Plotting, encapsulates various plotting methods for visualizing trajectories, errors, and other relevant data associated with the Extended Kalman Filter (EKF) applied to satellite motion.
-
-Attributes:
-    None
-
-Methods:
-    Two_Dim_plot_trajectories(true_traj, estimated_traj, observations, title="Trajectories"): Plots the true trajectory, estimated trajectory, and noisy measurements in 2D.
-    Two_Dim_plot_error(true_traj, estimated_traj, title="Error in Trajectories"): Plots the error in trajectories in 2D.
-    Three_Dim_plot_trajectories(true_traj, estimated_traj, observations, title="3D Trajectories"): Plots the true trajectory, estimated trajectory, and noisy measurements in 3D.
-    Three_Dim_Slice_Trajectory(true_traj, estimated_traj, observation_states, observation_times, sim_times, dt, Three_Dim_crash_coords): Plots a sliced view of the true trajectory, estimated trajectory, and noisy measurements in 3D.
-    plot_position_error(true_traj, estimated_traj, observation_states): Plots the position error.
-    plot_velocity_error(true_traj, estimated_traj): Plots the velocity error.
-    plot_absolute_error(true_traj, estimated_traj): Plots the absolute error. 
+"""This module encapsulates various plotting methods for visualizing trajectories, errors, and other relevant data associated with the simulation and prediction of satellite trajectories.
 """
 
 import matplotlib.pyplot as plt
