@@ -23,9 +23,8 @@ class EKF:
         sim_method_kwargs = kwargs.get("sim_method_kwargs", None)
         atmos_kwargs = kwargs.get("atmos_kwargs", None)
 
-        # TODO: Add support for 3D sims
-        if dim != 2:
-            raise NotImplementedError("Only 2D simulations are supported")
+        if dim not in [2, 3]:
+            raise NotImplementedError("Simulations have to be 2D or 3D")
 
         integration_sim_config = generate_sim_config(
             sim_method,
@@ -186,8 +185,8 @@ class EKF:
         if observation is not None and np.any((R is None, H is None)):
             raise ValueError("If observation is not None, R and H must be provided")
         
-        if np.any([i.shape != [2 * self.dim] * 2 for i in [Q, P, H, R]]):
-            raise ValueError(f"Kalman matrices not same dimensions, should be {len(state)} by {len(state)}")
+        if np.any([i is not None and i.shape != (2 * self.dim, 2 * self.dim) for i in [Q, P, H, R]]):
+            raise ValueError(f"Kalman matrices not same dimensions, should be {2 * self.dim} by {2 * self.dim}")
             
         accel = self.integration_sim._calculate_accel(state, time)
         # EKF Prediction
