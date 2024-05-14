@@ -186,6 +186,10 @@ class EKF:
             raise ValueError("If observation is not None, R and H must be provided")
         
         if np.any([i is not None and i.shape != (2 * self.dim, 2 * self.dim) for i in [Q, P, H, R]]):
+            print(Q.shape)
+            print(P.shape)
+            print(H.shape)
+            print(R.shape)
             raise ValueError(f"Kalman matrices not same dimensions, should be {2 * self.dim} by {2 * self.dim}")
             
         accel = self.integration_sim._calculate_accel(state, time)
@@ -221,7 +225,7 @@ class EKF:
         Args:
             observations (NDArray): A tuple of (observations, measurement_times)
             dt (float): Time step for the Kalman Filter simulation
-            Q (NDArray): Process noise matrix with shape (4, 4) or (6, 6)
+            Q (NDArray): Process noise matrix with shape (4, 4) or (6, 6) etc
             R (NDArray): Measurement noise matrix with shape (4, 4) or (N, 4, 4) where N is the number of measurements
             P (NDArray): Initial state covariance matrix
             H (NDArray): Measurement matrix

@@ -210,7 +210,7 @@ class Simulator(ABC):
             # gaussian noise accounting for random changes throughout the deorbit process
             noise_kwargs: GaussianNoiseKwargs = self.noise_types["gaussian"]
             noise_accel += np.linalg.norm(drag_accel + grav_accel) * np.random.normal(
-                0, noise_kwargs.noise_strength, size=2
+                0, noise_kwargs.noise_strength, size=self.dim
             )
 
         if "impulse" in self.noise_types:
@@ -220,8 +220,8 @@ class Simulator(ABC):
             collision_chance = np.random.random()
             if collision_chance < noise_kwargs.impulse_probability:
                 # Impulse in a random direction
-                direction = np.random.uniform(0, 2 * np.pi)
-                direction = np.array([np.cos(direction), np.sin(direction)])
+                direction = np.random.normal(size = self.dim)
+                direction = direction/np.linalg.norm(direction)
                 noise_accel += direction * noise_kwargs.impulse_strength
         return drag_accel + grav_accel + noise_accel
 
