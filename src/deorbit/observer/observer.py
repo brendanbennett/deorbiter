@@ -41,10 +41,10 @@ class Observer:
             self._default_radar_positions(self.number_of_radars, self.dim),
         )
         # Observation distances are about 50-500km.
-        self.radar_position_std_per_distance: float = kwargs.get("radar_position_std_per_distance", 0.01)
+        self.radar_position_std_per_distance: float = kwargs.get("radar_position_std_per_distance", 0.005)
         # Want distance to only play a small role, in order to make velocity error more relative
-        self.radar_velocity_std_per_distance: float = kwargs.get("radar_velocity_std_per_distance", 0.00001)
-        self.radar_velocity_std_per_speed: float = kwargs.get("radar_velocity_std_per_speed", 0.001)
+        self.radar_velocity_std_per_distance: float = kwargs.get("radar_velocity_std_per_distance", 0.000001)
+        self.radar_velocity_std_per_speed: float = kwargs.get("radar_velocity_std_per_speed", 0.0005)
         self.observed_states: list[list[float]] | None = None
         self.observed_times: list[float] | None = None
         self.observed_covariances: npt.NDArray = None
