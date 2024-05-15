@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 import deorbit
-from mpl_toolkits.basemap import Basemap
+#from mpl_toolkits.basemap import Basemap
 
 def plot_trajectories(true_traj, estimated_traj = None, observations = None, title="Trajectories"):
     if len(true_traj[0]) == 2:
@@ -89,10 +89,33 @@ def plot_crash_site(true_traj, estimated_traj = None, observations = None, title
         print('Crash Site Visualisation works in 2D only')
 
 def plot_from_last_measurements(true_traj, estimated_traj = None, observations = None, observation_times = None, no_measurements = 1, title = 'Plot from last Measurements'):
-    last_measurements = observations[-no_measurements:, :]
-    last_traj = true_traj[-no_measurements:, :]
-    last_estimated_traj = estimated_traj[-no_measurements:, :]
-    plot_trajectories(last_traj, estimated_traj = last_estimated_traj, observations=last_measurements)
+    last_obs = observations[-no_measurements:, :]
+    last_obs_time = int(observation_times[-no_measurements]/2)
+    print(last_obs_time)
+    last_traj = true_traj[-last_obs_time:, :]
+    last_estimated_traj = estimated_traj[-last_obs_time:, :]
+    if len(true_traj[0]) == 2:
+        crash_coords = true_traj[-1, :]
+        fig, ax = plt.subplots()
+        ax.plot(last_traj[:, 0], last_traj[:, 1], label='True Trajectory')
+        if observations is not None:
+            ax.scatter(last_obs[:, 0], last_obs[:, 1], marker='x', color='r', label='Noisy Measurements')
+        if estimated_traj is not None:
+            ax.plot(last_estimated_traj[:, 0], last_estimated_traj[:, 1], label='Estimated Trajectory', linestyle='--')
+        ax.set_title(title)
+        ax.set_xlabel('Position X')
+        ax.set_ylabel('Position Y')
+        print(last_obs[0][0])
+        print(last_obs[0][1])
+        ax.set_xlim([np.min([crash_coords[0]-5e5, last_obs[0][0] - 5e5]), np.max([crash_coords[0]+5e5, last_obs[0][0] + 5e5])])
+        ax.set_ylim([np.min([crash_coords[1]-5e5, last_obs[0][1] - 5e5]), np.max([crash_coords[1]+5e5, last_obs[0][1] + 5e5])])
+        earth = plt.Circle((0, 0), radius=deorbit.constants.EARTH_RADIUS, fill=False)
+        ax.add_patch(earth)
+        ax.legend()
+        plt.show()
+        plt.close()
+    else: 
+        print('Last measurement Visualisation works in 2D only - currently')
 
     
     
@@ -251,40 +274,40 @@ def plot_theoretical_empirical_observation_error(sim_states, sim_times, observat
     fig.set_constrained_layout(True)
     plt.show()
     
-def plot_heatmap(true_traj, estimated_traj, uncertainties):
-    crash_coords = true_traj[-1, :]
-    dim = estimated_traj.shape[1] // 2
-    mean_trajectory = estimated_traj[:, :dim]  # Extract position data
-    uncertainty_matrix = uncertainties[:, :dim, :dim]  # Extract position uncertainty
+# def plot_heatmap(true_traj, estimated_traj, uncertainties):
+#     crash_coords = true_traj[-1, :]
+#     dim = estimated_traj.shape[1] // 2
+#     mean_trajectory = estimated_traj[:, :dim]  # Extract position data
+#     uncertainty_matrix = uncertainties[:, :dim, :dim]  # Extract position uncertainty
 
-    # Define grid --> Projecting to 2D map?
-    lats = np.linspace(-90, 90, 100)
-    lons = np.linspace(-180, 180, 200)
-    grid_lats, grid_lons = np.meshgrid(lats, lons)
+#     # Define grid --> Projecting to 2D map?
+#     lats = np.linspace(-90, 90, 100)
+#     lons = np.linspace(-180, 180, 200)
+#     grid_lats, grid_lons = np.meshgrid(lats, lons)
 
-    # Initialize heatmap array
-    heatmap = np.zeros_like(grid_lats)
+#     # Initialize heatmap array
+#     heatmap = np.zeros_like(grid_lats)
 
-    # Iterate over each grid point
-    for i in range(len(lats)):
-        for j in range(len(lons)):
-            # Compute distance between mean trajectory and grid point
-            dist = np.linalg.norm(mean_trajectory[:, :dim] - [lons[j], lats[i]], axis=1)
+#     # Iterate over each grid point
+#     for i in range(len(lats)):
+#         for j in range(len(lons)):
+#             # Compute distance between mean trajectory and grid point
+#             dist = np.linalg.norm(mean_trajectory[:, :dim] - [lons[j], lats[i]], axis=1)
 
-            # Compute PDF based on uncertainty matrix
-            pdf = np.exp(-0.5 * np.sum(dist @ np.linalg.inv(uncertainty_matrix) * dist, axis=1))
+#             # Compute PDF based on uncertainty matrix
+#             pdf = np.exp(-0.5 * np.sum(dist @ np.linalg.inv(uncertainty_matrix) * dist, axis=1))
 
-            # Update heatmap value
-            heatmap[i, j] = np.mean(pdf)
+#             # Update heatmap value
+#             heatmap[i, j] = np.mean(pdf)
 
-    # Plot heatmap
-    plt.figure(figsize=(10, 6))
-    m = Basemap(projection='mill', lon_0=0)
-    m.drawcoastlines()
-    m.drawparallels(np.arange(-90., 91., 30.), labels=[1, 0, 0, 0])
-    m.drawmeridians(np.arange(-180., 181., 60.), labels=[0, 0, 0, 1])
-    x, y = m(grid_lons, grid_lats)
-    m.pcolormesh(x, y, heatmap, cmap='hot_r')
-    plt.colorbar(label='Probability Density')
-    plt.title('Impact Location Heatmap')
-    plt.show()
+#     # Plot heatmap
+#     plt.figure(figsize=(10, 6))
+#     m = Basemap(projection='mill', lon_0=0)
+#     m.drawcoastlines()
+#     m.drawparallels(np.arange(-90., 91., 30.), labels=[1, 0, 0, 0])
+#     m.drawmeridians(np.arange(-180., 181., 60.), labels=[0, 0, 0, 1])
+#     x, y = m(grid_lons, grid_lats)
+#     m.pcolormesh(x, y, heatmap, cmap='hot_r')
+#     plt.colorbar(label='Probability Density')
+#     plt.title('Impact Location Heatmap')
+#     plt.show()
