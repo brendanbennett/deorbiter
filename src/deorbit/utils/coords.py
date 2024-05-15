@@ -52,17 +52,40 @@ def latlong_from_cart(cart, return_radius: bool = False):
     else:
         raise ValueError("cart must be of length 2 or 3")
 
-def earth_rotate_cart(cart_vector: Sequence[float], time: float) -> np.ndarray:
+
+def earth_rotation(
+    cart_vector: Sequence[float], time: float, return_radius: bool = False
+) -> np.ndarray:
     """Calculate the real latitude and longitude of a cartesian point above Earth's surface due to the Earth's rotation underneath it.
-    
+
     :param cart_vector: The cartesian coordinates of the point.
     :param time: The time in seconds since the start of the simulation.
+    :param return_radius: Whether to return the radius of the point.
+    :return: The longitude and latitude of the point.
     """
     if len(cart_vector) != 3:
         long, r = latlong_from_cart(cart_vector, return_radius=True)
         long -= EARTH_ROTATIONAL_SPEED * time
-        return cart_from_latlong((long,), radius=r)
+        if return_radius:
+            return long, r
+        return long
     else:
         lat, long, r = latlong_from_cart(cart_vector, return_radius=True)
         long -= EARTH_ROTATIONAL_SPEED * time
-        return cart_from_latlong((lat, long), radius=r)
+        if return_radius:
+            return lat, long, r
+        return lat, long
+
+
+def earth_rotation_array(
+    cart_positions: np.ndarray, times: float, return_radius: bool = True
+) -> np.ndarray:
+    """Calculate the real latitude and longitude of points above Earth's surface due to the Earth's rotation underneath it over time.
+    Useful for plotting trajectories on a real map.
+
+    :param cart_vectors: The cartesian positions of the points.
+    :param time: The time in seconds since the start of the simulation.
+    :param return_radius: Whether to return the radius of the points.
+    :return: The longitude and latitude of the points.
+    """
+    return np.array([earth_rotation(v, t, return_radius=return_radius) for v, t in zip(cart_positions, times)])
