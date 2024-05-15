@@ -437,8 +437,8 @@ def plot_theoretical_empirical_observation_error(
         (observation_states - sim_states[sim_times_observed])[:, 3:], axis=1
     )
     vel_std = np.sqrt(np.trace(observed_covariances[:, 3:, 3:], axis1=1, axis2=2))
-    ax1.scatter(observation_times, vel_observation_error, label="Empirical")
-    ax1.scatter(observation_times, vel_std, label="Theoretical")
+    ax1.scatter(observation_times, vel_observation_error, label="Empirical", marker="x", s=20)
+    ax1.scatter(observation_times, vel_std, label="Theoretical", marker="+", s=30)
     ax1.set_xlabel("Time [s]")
     ax1.set_ylabel("Velocity error [m/s]")
     ax1.set_title("Velocity measurement error")
@@ -448,8 +448,8 @@ def plot_theoretical_empirical_observation_error(
         (observation_states - sim_states[sim_times_observed])[:, :3], axis=1
     )
     pos_std = np.sqrt(np.trace(observed_covariances[:, :3, :3], axis1=1, axis2=2))
-    ax2.scatter(observation_times, pos_observation_error, label="Empirical")
-    ax2.scatter(observation_times, pos_std, label="Theoretical")
+    ax2.scatter(observation_times, pos_observation_error, label="Empirical", marker="x", s=20)
+    ax2.scatter(observation_times, pos_std, label="Theoretical", marker="+", s=30)
     ax2.set_xlabel("Time [s]")
     ax2.set_ylabel("Position error [m]")
     ax2.set_title("Position measurement error")
