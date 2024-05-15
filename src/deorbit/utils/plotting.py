@@ -43,6 +43,7 @@ def plot_trajectories(
         if ax is None:
             fig, ax = plt.subplots()
         ax.plot(true_traj[:, 0], true_traj[:, 1], label="True Trajectory")
+        ax.set_aspect('equal')
         if observations is not None:
             ax.scatter(
                 observations[:, 0],
@@ -92,6 +93,8 @@ def plot_trajectories(
         ax.set_xlabel("Position X")
         ax.set_ylabel("Position Y")
         ax.set_zlabel("Position Z")
+        ax.set_aspect('equal')
+
 
         # plotting EARTH
         r = deorbit.constants.EARTH_RADIUS
