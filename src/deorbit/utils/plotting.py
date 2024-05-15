@@ -88,36 +88,7 @@ def plot_crash_site(true_traj, estimated_traj = None, observations = None, title
     else: 
         print('Crash Site Visualisation works in 2D only')
 
-def plot_from_last_measurements(true_traj, estimated_traj = None, observations = None, observation_times = None, no_measurements = 1, title = 'Plot from last Measurements'):
-    last_obs = observations[-no_measurements:, :]
-    last_obs_time = int(observation_times[-no_measurements]/2)
-    print(last_obs_time)
-    last_traj = true_traj[-last_obs_time:, :]
-    last_estimated_traj = estimated_traj[-last_obs_time:, :]
-    if len(true_traj[0]) == 2:
-        crash_coords = true_traj[-1, :]
-        fig, ax = plt.subplots()
-        ax.plot(last_traj[:, 0], last_traj[:, 1], label='True Trajectory')
-        if observations is not None:
-            ax.scatter(last_obs[:, 0], last_obs[:, 1], marker='x', color='r', label='Noisy Measurements')
-        if estimated_traj is not None:
-            ax.plot(last_estimated_traj[:, 0], last_estimated_traj[:, 1], label='Estimated Trajectory', linestyle='--')
-        ax.set_title(title)
-        ax.set_xlabel('Position X')
-        ax.set_ylabel('Position Y')
-        print(last_obs[0][0])
-        print(last_obs[0][1])
-        ax.set_xlim([np.min([crash_coords[0]-5e5, last_obs[0][0] - 5e5]), np.max([crash_coords[0]+5e5, last_obs[0][0] + 5e5])])
-        ax.set_ylim([np.min([crash_coords[1]-5e5, last_obs[0][1] - 5e5]), np.max([crash_coords[1]+5e5, last_obs[0][1] + 5e5])])
-        earth = plt.Circle((0, 0), radius=deorbit.constants.EARTH_RADIUS, fill=False)
-        ax.add_patch(earth)
-        ax.legend()
-        plt.show()
-        plt.close()
-    else: 
-        print('Last measurement Visualisation works in 2D only - currently')
 
-    
     
 def plot_error(true_traj, estimated_traj, title="Error in Trajectories"):
     true_traj = np.array(true_traj)
