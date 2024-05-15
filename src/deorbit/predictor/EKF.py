@@ -264,9 +264,11 @@ class EKF:
 
         # Estimated trajectories
         measurements, measurement_times = observations
-
+        
         # Generator for the EKF time steps
         EKF_times = count(measurement_times[0], self.dt)
+        if steps is not None:
+            EKF_times = (next(EKF_times) for _ in range(steps))
 
         estimated_trajectory = [measurements[0]]
         uncertainties = []
