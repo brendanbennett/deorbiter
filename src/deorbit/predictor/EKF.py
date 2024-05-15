@@ -71,6 +71,29 @@ class EKF:
 
     @staticmethod
     def compute_jacobian(state, time, accel, atmos: AtmosphereModel):
+        """
+        Compute the Jacobian matrix for the Extended Kalman Filter (EKF) state transition.
+
+        :param state: The current state vector of the system, including positions and velocities.
+        :type state: np.ndarray
+        :param time: The current time of the system.
+        :type time: float
+        :param accel: The current acceleration vector of the system.
+        :type accel: np.ndarray
+        :param atmos: The atmosphere model used to compute density and its derivative.
+        :type atmos: AtmosphereModel
+        :return: The Jacobian matrix of the state transition.
+        :rtype: np.ndarray
+
+        The Jacobian matrix is calculated based on the dimension of the state vector. The function supports
+        both 2D and 3D simulations, where the state vector has 4 or 6 elements, respectively.
+
+        - For 2D, the state vector is [x, y, x_dot, y_dot].
+        - For 3D, the state vector is [x, y, z, x_dot, y_dot, z_dot].
+
+        The function accounts for the gravitational force and atmospheric drag force in the Jacobian matrix.
+        The atmospheric density and its derivative are computed using the provided atmosphere model.
+        """
         #calculate dimension for jacobian
         dim = len(state)/2
 

@@ -6,11 +6,13 @@ import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 import deorbit
 from mpl_toolkits.basemap import Basemap
+from deorbit.utils.coords import latlong_from_cart
 
 __all__ = [
     "plot_trajectories",
     "plot_height",
     "plot_crash_site",
+    "plot_crash_site_on_map"
     "plot_error",
     "plot_position_error",
     "plot_velocity_error",
@@ -235,6 +237,115 @@ def plot_crash_site(
         ax.legend()
     else:
         print("Crash Site Visualisation works in 2D only")
+    if show:
+        plt.show()
+        plt.close()
+
+def plot_crash_site_on_map(
+    true_traj, 
+    estimated_traj=None,
+    title = 'Crash Site',
+    ax=None,
+    show=True
+    ):
+    """
+    Plots the final crash site on a 2D map, including the estaimated crash site if it is supplied
+
+    Args:
+    true_traj (np.ndarray): The true trajectory data points.
+    estimated_traj (np.ndarray, optional): The estimated trajectory data points. Defaults to None.
+    title (str): The title of the plot.
+    """
+    crash_coords = true_traj[-1, :]
+    dim = len(crash_coords)
+        
+    if ax is None:
+        m = Basemap(projection="cyl", lon_0=0)
+
+    # Draw coastlines, parallels, and meridians
+    m.drawcoastlines()
+    m.drawparallels(np.arange(-90.0, 91.0, 30.0), labels=[1, 0, 0, 0])
+    m.drawmeridians(np.arange(-180.0, 181.0, 60.0), labels=[0, 0, 0, 1])    
+
+    if dim ==2:
+        long_crash_coords = (latlong_from_cart(crash_coords)/(np.pi/180))
+
+        # normalize longitude coordinate
+        normalized_long = long_crash_coords % 360 
+        if normalized_long > 180:
+            normalized_long -= 360  # Convert to [-180, 180] range
+
+        # Plot crash point
+        m.scatter(
+            normalized_long, 
+            0, 
+            marker='x', 
+            color='r', 
+            s=10, 
+            label = f'True crash: ({normalized_long:.2f}, 0)'
+            )
+        if estimated_traj is not None:
+            estimated_crash_coords = estimated_traj[-1, :2]
+            estimated_crash_long = (latlong_from_cart(estimated_crash_coords)/(np.pi/180))  
+
+            # normalize longitude coordinate
+            normalized_est_longitude = estimated_crash_long % 360 
+            if normalized_est_longitude > 180:
+                normalized_est_longitude -= 360  # Convert to [-180, 180] range
+
+            m.scatter(
+                normalized_est_longitude, 
+                0, 
+                marker = 's', 
+                s=10, 
+                label = f'Predicted crash: ({normalized_est_longitude:.2f}, 0)'
+                )
+
+
+    if dim ==3:
+        latlong_crash_coords = (latlong_from_cart(crash_coords)/(np.pi/180))
+
+        # normalize latitude coordinate
+        normalized_latitude = latlong_crash_coords[1] % 180
+        if normalized_latitude > 90:
+            normalized_latitude -= 180  # Convert to [-90, 90] range
+
+        # normalize longitude coordinate
+        normalized_longitude = latlong_crash_coords[0] % 360 
+        if normalized_longitude > 180:
+            normalized_longitude -= 360  # Convert to [-180, 180] range
+
+        # plot crash point
+        m.scatter(normalized_longitude, 
+               normalized_latitude, 
+               marker='x', color='r', 
+               s=10, 
+               label = f'True Crash: ({normalized_longitude:.2f}, {normalized_latitude:.2f})'
+               )
+        if estimated_traj is not None:
+            estimated_crash_coords = estimated_traj[-1, :3]
+            estimated_crash_longlat = (latlong_from_cart(estimated_crash_coords)/(np.pi/180))
+
+            # normalize latitude coordinate
+            est_norm_lat = estimated_crash_longlat[1] % 180
+            if est_norm_lat > 90:
+                est_norm_lat -= 180  # Convert to [-90, 90] range
+
+            # normalize longitude coordinate
+            est_norm_long = estimated_crash_longlat[0] % 360 
+            if est_norm_long > 180:
+                est_norm_long -= 360  # Convert to [-180, 180] range
+            
+            m.scatter(
+                est_norm_long, 
+                est_norm_lat, 
+                marker = 's', 
+                s=10, 
+                label = f'Predicted crash: ({est_norm_long:.2f}, {est_norm_lat:.2f})'
+                )
+
+    plt.legend()
+    plt.title(title)
     if show:
         plt.show()
         plt.close()
