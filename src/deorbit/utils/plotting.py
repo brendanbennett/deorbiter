@@ -7,6 +7,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import deorbit
 from mpl_toolkits.basemap import Basemap
 from deorbit.utils.coords import latlong_from_cart
+from matplotlib.patches import Ellipse
 
 __all__ = [
     "plot_trajectories",
@@ -244,6 +245,7 @@ def plot_crash_site(
 def plot_crash_site_on_map(
     true_traj, 
     estimated_traj=None,
+    uncertainties = None,
     title = 'Crash Site',
     ax=None,
     show=True
@@ -254,6 +256,7 @@ def plot_crash_site_on_map(
     Args:
     true_traj (np.ndarray): The true trajectory data points.
     estimated_traj (np.ndarray, optional): The estimated trajectory data points. Defaults to None.
+    uncertainties (np.ndarray): covariance arrays associated with trajectory data points. Defaults to None
     title (str): The title of the plot.
     """
     crash_coords = true_traj[-1, :]
@@ -286,7 +289,7 @@ def plot_crash_site_on_map(
             )
         if estimated_traj is not None:
             estimated_crash_coords = estimated_traj[-1, :2]
-            estimated_crash_long = (latlong_from_cart(estimated_crash_coords)/(np.pi/180))  
+            estimated_crash_long = (latlong_from_cart(estimated_crash_coords)/(np.pi/180)) 
 
             # normalize longitude coordinate
             normalized_est_longitude = estimated_crash_long % 360 
@@ -300,6 +303,16 @@ def plot_crash_site_on_map(
                 s=10, 
                 label = f'Predicted crash: ({normalized_est_longitude:.2f}, 0)'
                 )
+        
+        if uncertainties is not None:
+            uncertainty = uncertainties[-150]
+            variance = np.array([uncertainty[0][0], uncertainty[1][1]])
+            long_variance = (latlong_from_cart(variance)/(np.pi/180)) 
+            long_std = long_variance ** 0.5
+
+            plt.errorbar(
+                normalized_est_longitude, 0, xerr=long_std
+            )
 
 
     if dim ==3:
@@ -343,6 +356,31 @@ def plot_crash_site_on_map(
                 s=10, 
                 label = f'Predicted crash: ({est_norm_long:.2f}, {est_norm_lat:.2f})'
                 )
+        if uncertainties is not None:
+            uncertainty = uncertainties[-130]
+            variance = np.array([uncertainty[0][0], uncertainty[1][1], uncertainty[2][2]])
+            std = variance**0.5 
+
+            #puts it through the transform which is wrong
+            latlong_std = (latlong_from_cart(std)/(np.pi/180)) 
+            long_std = latlong_std[0]
+            lat_std = latlong_std[1]
+            #print(long_std)
+            #print(lat_std)
+
+            #baso percentage uncertainties, also wrong
+            estimated_crash_longlat_std = estimated_crash_longlat * np.linalg.norm(std/estimated_crash_coords)
+            #print(estimated_crash_longlat_std)
+
+            #cant get this too work
+            # major_axis = 2 *long_std
+            # minor_axis = 2*lat_std
+            # ellipse = Ellipse(xy=(est_norm_long, est_norm_lat), width=major_axis, height=minor_axis, angle=0)
+            # m.ax.add_patch(ellipse)
+
+            plt.errorbar(
+               est_norm_long, est_norm_lat, xerr=long_std, yerr = lat_std 
+            )
 
     plt.legend()
     plt.title(title)
