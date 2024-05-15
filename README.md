@@ -63,7 +63,7 @@ Choose either Miniconda for a lightweight version or Anaconda Distribution.
 
 pip installing the Deorbit package allows the package to be imported into your Python files, enter:
 ```
-> python -m pip install git+https://github.com/ES98B-Mir-project-23/mir-orbiter.git@main#egg=mir-satellite-deorbiter
+> python -m pip install mir-satellite-deorbiter@git+https://github.com/ES98B-Mir-project-23/mir-orbiter.git@main
 ```
 
 Into your command prompt or Anaconda prompt.
@@ -71,25 +71,20 @@ Into your command prompt or Anaconda prompt.
 ### Installing the Deorbit Package for Development Purposes (OPTIONAL)
 
 To download the code for development purposes and have access to the code, you can clone the repository from GitHub to a local directory with the command line prompt:
+```
 > git clone https://github.com/ES98B-Mir-project-23/mir-orbiter.git
+```
 
-Alternatively, the repository can be accessed on:
-https://github.com/ES98B-Mir-project-23 <br>
-<br>
-The prompt should now show something similar to:
-> (deorbit) C:\Users\User\mir-orbiter>
-
-With the name of your current environment in brackets. See above for activating Conda environments. <br>
-If it displays:
-> (deorbit) C:\Users\User>
-
-Type:
+```
 > cd mir-orbiter
+```
 
 to navigate to the mir-orbiter path
 
 To install the required package dependencies, enter:
+```
 > python -m pip install -e .[dev]
+```
 
 This will install the package in editable mode, allowing the package to be modified and changes to be applied immediately in the local environment. 
 <br>
