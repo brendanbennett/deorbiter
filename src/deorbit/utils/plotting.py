@@ -7,7 +7,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import deorbit
 from mpl_toolkits.basemap import Basemap
 
-
+__all__ = ['plot_trajectories', 'plot_height', 'plot_crash_site', 'plot_error', 'plot_position_error', 'plot_velocity_error', 'plot_absolute_error', 'plot_theoretical_empirical_observation_error', 'plot_heatmap']
 
 def plot_trajectories(true_traj, estimated_traj = None, observations = None, title="Trajectories"):
     """

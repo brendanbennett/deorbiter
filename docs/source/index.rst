@@ -16,6 +16,7 @@ It is designed to be easy to use and flexible, and is suitable for a wide range 
    simulator
    predictor
    observer
+   plotting
 
 Indices and tables
 ==================
