@@ -16,6 +16,15 @@ from deorbit.utils.constants import (
 
 
 class EKF:
+    """Extended Kalman Filter implementation for the prediction of a satellite's trajectory.
+
+    :keyword dim: The dimension of the simulation. Defaults to 2.
+    :keyword sim_method: The numerical method to use for the simulation. Defaults to "RK4".
+    :keyword atmos_model: The atmosphere model to use for the simulation. Defaults to "coesa_atmos_fast".
+    :keyword sim_method_kwargs: Additional keyword arguments for the numerical method. Defaults to None.
+    :keyword atmos_kwargs: Additional keyword arguments for the atmosphere model. Defaults to None.
+    """
+
     def __init__(self, **kwargs):
         dim = kwargs.get("dim", 2)
         sim_method = kwargs.get("sim_method", "RK4")
@@ -50,19 +59,19 @@ class EKF:
         self.times = []
 
     @property
-    def dt(self):
+    def dt(self) -> float:
         return self.integration_sim.time_step
 
     @dt.setter
-    def dt(self, value):
+    def dt(self, value: float):
         self.integration_sim.time_step = value
 
     @property
-    def dim(self):
+    def dim(self) -> int:
         return self.integration_sim.dim
 
     @staticmethod
-    def compute_jacobian(state, time, accel, atmos: AtmosphereModel):
+    def compute_jacobian(state, time, accel, atmos: AtmosphereModel) -> np.ndarray:
         # func to compute the Jacobian matrix dynamically
         x_dot_dot, y_dot_dot = accel
         x, y, x_dot, y_dot = state
@@ -110,7 +119,21 @@ class EKF:
 
         return jacobian
 
-    def next_state(self, state, time, Q, P, H=None, dt=None, observation=None, R=None):
+    def next_state(
+        self, state, time, Q, P, observation=None, H=None, R=None, dt=None
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Computes the next state of the system using the Extended Kalman Filter.
+
+        :param state: The current state of the system
+        :param time: The current time of the system
+        :param Q: Process noise matrix with shape (2*dim, 2*dim)
+        :param P: Initial state covariance matrix with shape (2*dim, 2*dim)
+        :param observation: The observation at the current time. Optional.
+        :param H: Measurement matrix. Required if observation is not None.
+        :param R: Measurement noise matrix. Required if observation is not None.
+        :param dt: Time step for the Kalman Filter simulation. If None, the simulator's default is used.
+        :return: Tuple of the next state of the system and the updated state covariance matrix
+        """
         if dt is not None:
             self.dt = dt
         if observation is not None and np.any((R is None, H is None)):
@@ -119,7 +142,7 @@ class EKF:
         accel = self.integration_sim._calculate_accel(state, time)
         # EKF Prediction
         F_t = self.compute_jacobian(state, time, accel, self.atmos)
-        Phi_t: npt.NDArray = np.eye(2 * self.dim) + F_t * self.dt
+        Phi_t: np.ndarray = np.eye(2 * self.dim) + F_t * self.dt
 
         x_hat_minus = self.integration_sim._next_state(state, time)
         P_minus = Phi_t @ P @ Phi_t.T + Q
@@ -143,7 +166,9 @@ class EKF:
 
         return x_hat, P
 
-    def run(self, observations, dt, Q, R, P, H):
+    def run(
+        self, observations, dt, Q, R, P, H
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Runs the Extended Kalman Filter on the given observations.
 
         Args:
@@ -155,8 +180,7 @@ class EKF:
             H (NDArray): Measurement matrix
             integration_sim_config (SimConfig | None, optional): Simulator config for the internal simulation engine. Defaults to None.
 
-        Returns:
-            _type_: _description_
+        :return: The estimated trajectory, uncertainties, and times
         """
         self.dt = dt
 
@@ -187,8 +211,8 @@ class EKF:
                     t,
                     Q,
                     P,
-                    H,
                     observation=measurements[j],
+                    H=H,
                     R=R_mat,
                 )
                 # Count a measurement and move to the next measurement that is in the future.
@@ -196,7 +220,7 @@ class EKF:
                 j = np.argmax(measurement_times > t + self.dt / 2)
                 pbar.update(1)  # Progress bar
             else:
-                x_hat, P = self.next_state(estimated_trajectory[-1], t, Q, P, H)
+                x_hat, P = self.next_state(estimated_trajectory[-1], t, Q, P)
 
             estimated_trajectory.append(x_hat)
             uncertainties.append(P)
@@ -213,6 +237,17 @@ class EKF:
 
 
 class EKFOnline:
+    """Extended Kalman Filter implementation for the real time prediction of a satellite's trajectory.
+    This uses the logic of the :class:`EKF` class but is allows one to step through the prediction process one step at a time.
+
+    :param ekf: The :class:`EKF` object to use for the prediction
+    :param initial_state: The initial state of the system
+    :param initial_time: The initial time of the system
+    :param initial_uncertainty: The initial state covariance matrix
+
+    .. warning:: The initial state must not have a zero velocity component. This is due a shortcoming of the EKF Jacobian calculation.
+    """
+
     def __init__(
         self, ekf: EKF, initial_state, initial_time, initial_uncertainty
     ) -> None:
@@ -221,7 +256,7 @@ class EKFOnline:
         self.estimated_times = [initial_time]
         self.uncertainties = [initial_uncertainty]
 
-    def step(self, time, Q, observation=None, R=None, H=None):
+    def step(self, time, Q, observation=None, R=None, H=None) -> None:
         dt = time - self.estimated_times[-1]
         self.estimated_times.append(time)
         x_hat, P = self.ekf.next_state(
@@ -229,10 +264,10 @@ class EKFOnline:
             time,
             Q,
             self.uncertainties[-1],
-            H,
-            dt=dt,
             observation=observation,
+            H=H,
             R=R,
+            dt=dt,
         )
         self.estimated_trajectory.append(x_hat)
         self.uncertainties.append(P)
