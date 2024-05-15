@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 import deorbit
+from mpl_toolkits.basemap import Basemap
 
 def plot_trajectories(true_traj, estimated_traj = None, observations = None, title="Trajectories"):
     if len(true_traj[0]) == 2:
@@ -248,4 +249,42 @@ def plot_theoretical_empirical_observation_error(sim_states, sim_times, observat
     ax2.legend()
     
     fig.set_constrained_layout(True)
+    plt.show()
+    
+def plot_heatmap(true_traj, estimated_traj, uncertainties):
+    crash_coords = true_traj[-1, :]
+    dim = estimated_traj.shape[1] // 2
+    mean_trajectory = estimated_traj[:, :dim]  # Extract position data
+    uncertainty_matrix = uncertainties[:, :dim, :dim]  # Extract position uncertainty
+
+    # Define grid --> Projecting to 2D map?
+    lats = np.linspace(-90, 90, 100)
+    lons = np.linspace(-180, 180, 200)
+    grid_lats, grid_lons = np.meshgrid(lats, lons)
+
+    # Initialize heatmap array
+    heatmap = np.zeros_like(grid_lats)
+
+    # Iterate over each grid point
+    for i in range(len(lats)):
+        for j in range(len(lons)):
+            # Compute distance between mean trajectory and grid point
+            dist = np.linalg.norm(mean_trajectory[:, :dim] - [lons[j], lats[i]], axis=1)
+
+            # Compute PDF based on uncertainty matrix
+            pdf = np.exp(-0.5 * np.sum(dist @ np.linalg.inv(uncertainty_matrix) * dist, axis=1))
+
+            # Update heatmap value
+            heatmap[i, j] = np.mean(pdf)
+
+    # Plot heatmap
+    plt.figure(figsize=(10, 6))
+    m = Basemap(projection='mill', lon_0=0)
+    m.drawcoastlines()
+    m.drawparallels(np.arange(-90., 91., 30.), labels=[1, 0, 0, 0])
+    m.drawmeridians(np.arange(-180., 181., 60.), labels=[0, 0, 0, 1])
+    x, y = m(grid_lons, grid_lats)
+    m.pcolormesh(x, y, heatmap, cmap='hot_r')
+    plt.colorbar(label='Probability Density')
+    plt.title('Impact Location Heatmap')
     plt.show()
