@@ -170,7 +170,7 @@ class Observer:
 
             for i, xi in enumerate(self.positions_of_radars):
                 x_radar, y_radar, z_radar = cart_from_latlong(xi)
-                alpha = 1 - normalized_distances[i]  # Adjust alpha based on normalized distance
+                # alpha = 1 - normalized_distances[i]  # Adjust alpha based on normalized distance
                 ax.scatter(
                     x_radar,
                     y_radar,
@@ -179,7 +179,7 @@ class Observer:
                     marker="o",
                     s=50,
                     edgecolors="black",
-                    alpha = alpha
+                    # alpha = alpha
                 )
 
             ax.set_xlabel("X")
