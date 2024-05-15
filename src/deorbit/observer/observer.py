@@ -14,36 +14,14 @@ class Observer:
     :keyword rotation: Sets the speed in rad/s of the Earth's rotation. Default EARTH_ROTATIONAL_SPEED.
     :keyword number_of_radars: Determines how many radar stations are used in the simulation. Default 1.
     :keyword positions_of_radars: Optional numpy array containing [latitude, longitude] for each satellite, otherwise default equally spaced positions set.
-    :keyword radar_noise_factor: Simulates the uncertainty in the measurement. The variance increases linearly as distance to satellite increases. Default 0.1.
+    :keyword radar_position_std_per_distance: Sets the standard deviation of the radar position noise per distance. Default 0.005.
+    :keyword radar_velocity_std_per_distance: Sets the standard deviation of the radar velocity noise per distance. Default 0.000001.
+    :keyword radar_velocity_std_per_speed: Sets the standard deviation of the radar velocity noise per speed. Default 0.0005.
     :ivar observed_states: After the Observer has been run, observed states are stored here to be used in the Predictor.
     :ivar observed_times: After the Observer has been run, observed times are stored here to be used in the Predictor.
     :ivar observed_covariances: The noise covariance associated with each state measurement made by the radar stations.
     """
     def __init__(self, **kwargs):
-        """
-        ATTRIBUTES:
-        :::Earth Model Configuration:::
-        self.radius: Sets the distance of the Earth's radius
-        self.rotation: Sets the speed in rad/s of the Earth's rotation
-
-        :::Radar Stations Configuration:::
-        self.number_of_radars: Determines how many radar stations are used in the simulation, default 1
-        self.positions_of_radars: Optional numpy array containing [latitude, longitude] for each satellite, otherwise default positions set
-        self.radar_variance_per_m: Simulates the uncertainty in the measurement. The variance increases linearly as distance to satellite increases. Default 0.1
-
-        :::Observer Output:::
-        self.observed_states: After the Observer has been run, observed states are stored here to be used in the Predictor
-        self.observed_times: After the Observer has been run, observed times are stored here to be used in the Predictor
-        self.observed_covariances: The noise covariance associated with each state measurement made by the radar stations
-
-        METHODS:
-        self.plot_config(): Shows a 3D plot of the radar station configuration
-
-        self.run(sim_times, sim_states, checking_interval):
-        ->sim_states: the states of the satellite given by the Simulator
-        ->sim_times: the time steps of each state given by the Simulator
-        ->checking_interval: Radars check for line of sight at regular time intervals equal to (checking_interval * simulator interval) seconds.
-        """
         self.dim: float = kwargs.get("dim", 2)
         self.radius: float = kwargs.get("radius", EARTH_RADIUS)
         self.rotation: float = kwargs.get("rotation", EARTH_ROTATIONAL_SPEED)

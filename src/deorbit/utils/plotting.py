@@ -436,9 +436,9 @@ def plot_theoretical_empirical_observation_error(
     vel_observation_error = np.linalg.norm(
         (observation_states - sim_states[sim_times_observed])[:, 3:], axis=1
     )
-    vel_std = np.sqrt(observed_covariances[:, 3, 3])
-    ax1.plot(observation_times, vel_observation_error, label="Empirical")
-    ax1.plot(observation_times, vel_std * np.sqrt(3), label="Theoretical")
+    vel_std = np.sqrt(np.trace(observed_covariances[:, 3:, 3:], axis1=1, axis2=2))
+    ax1.scatter(observation_times, vel_observation_error, label="Empirical")
+    ax1.scatter(observation_times, vel_std, label="Theoretical")
     ax1.set_xlabel("Time [s]")
     ax1.set_ylabel("Velocity error [m/s]")
     ax1.set_title("Velocity measurement error")
@@ -447,9 +447,9 @@ def plot_theoretical_empirical_observation_error(
     pos_observation_error = np.linalg.norm(
         (observation_states - sim_states[sim_times_observed])[:, :3], axis=1
     )
-    pos_std = np.sqrt(observed_covariances[:, 0, 0])
-    ax2.plot(observation_times, pos_observation_error, label="Empirical")
-    ax2.plot(observation_times, pos_std * np.sqrt(3), label="Theoretical")
+    pos_std = np.sqrt(np.trace(observed_covariances[:, :3, :3], axis1=1, axis2=2))
+    ax2.scatter(observation_times, pos_observation_error, label="Empirical")
+    ax2.scatter(observation_times, pos_std, label="Theoretical")
     ax2.set_xlabel("Time [s]")
     ax2.set_ylabel("Position error [m]")
     ax2.set_title("Position measurement error")
