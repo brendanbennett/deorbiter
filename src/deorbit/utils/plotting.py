@@ -175,7 +175,7 @@ def plot_height(
         )
     ax.set_title(title)
     ax.set_xlabel("Time (min)")
-    ax.set_ylabel("Height")
+    ax.set_ylabel("Height (km)")
     ax.legend()
     if show:
         plt.show()
