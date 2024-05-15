@@ -6,40 +6,27 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-import os
-import sys
-sys.path.insert(0, os.path.abspath('../../src/deorbit'))
-
-
-project = 'ES98B'
-copyright = '2024, ES98 Group-Mir'
-author = 'ES98 Group-Mir'
-release = '1.0'
+project = 'Mir Orbiter'
+copyright = '2024, Shuheng Bao, Brendan Bennett, Patrick Courts, Angelo Desouza, Enqi Jing, Jimmy Medici-Wainwright'
+author = 'Shuheng Bao, Brendan Bennett, Patrick Courts, Angelo Desouza, Enqi Jing, Jimmy Medici-Wainwright'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.viewcode',
     'sphinx.ext.napoleon',
-    'sphinx.ext.doctest',
-    'sphinx.ext.intersphinx',
-    'sphinx.ext.todo',
-    'sphinx.ext.coverage',
-    'sphinx.ext.mathjax',
-    'sphinx.ext.napoleon',
-    'recommonmark',
+    'sphinx_autodoc_typehints',
 ]
 
 templates_path = ['_templates']
-exclude_patterns = [
-    'build/*'
-]
+exclude_patterns = []
 
 
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'sphinx_rtd_theme' # 'alabaster'
+html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
