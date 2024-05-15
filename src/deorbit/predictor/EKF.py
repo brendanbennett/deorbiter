@@ -220,6 +220,7 @@ class EKF:
         P_minus = Phi_t @ P @ Phi_t.T + Q
         if np.any(np.isnan(P_minus)):
             print(f"{P=}, {Phi_t=}, {P_minus=}")
+            raise ValueError("P_minus is NaN")
 
         if observation is not None:
             if R is None:
@@ -248,7 +249,7 @@ class EKF:
             dt (float): Time step for the Kalman Filter simulation
             Q (NDArray): Process noise matrix with shape (4, 4) or (6, 6) etc
             R (NDArray): Measurement noise matrix with shape (4, 4) or (N, 4, 4) where N is the number of measurements
-            P (NDArray): Initial state covariance matrix
+            P (NDArray): Initial state covariance matrix. Unused
             H (NDArray): Measurement matrix
             steps (int, optional): Number of steps to run the EKF. By default, it runs until the satellite crashes.
             integration_sim_config (SimConfig | None, optional): Simulator config for the internal simulation engine. Defaults to None.
@@ -265,19 +266,27 @@ class EKF:
         # Estimated trajectories
         measurements, measurement_times = observations
         
-        # Generator for the EKF time steps
+        # Generator for the EKF time steps. 
+        # When the EKF runs, this starts at the second time step, since the first is at the initial state.
         EKF_times = count(measurement_times[0], self.dt)
+        EKF_times_run = [next(EKF_times)]
         if steps is not None:
-            EKF_times = (next(EKF_times) for _ in range(steps))
+            EKF_times = [next(EKF_times) for _ in range(steps)]
 
+        # Initial state and uncertainty from the first measurement
         estimated_trajectory = [measurements[0]]
-        uncertainties = []
-
-        j = 0  # to filter through measurement array at different rate
+        uncertainties = [R_mat] if R.ndim == 2 else [R[0]]
+        P = uncertainties[0]
+        
+        # to filter through measurement array at different rate
+        # We start at the second measurement so the first is used as the initial state
+        j = 1  
 
         # Extended Kalman Filter
         pbar = tqdm(total=len(measurement_times))
+        pbar.update(1)
         for t in EKF_times:
+            EKF_times_run.append(t)
             if j < len(measurements) and np.abs(measurement_times[j] - t) < self.dt / 2:
                 if R.ndim == 3:
                     R_mat = R[j]
@@ -304,9 +313,7 @@ class EKF:
                 break
         pbar.close()
 
-        times = np.array(
-            [EKF_times.__next__() for _ in range(len(estimated_trajectory))]
-        )
+        times = np.array(EKF_times_run)
         uncertainties = np.array(uncertainties)
         return np.array(estimated_trajectory), uncertainties, times
 
@@ -346,5 +353,3 @@ class EKFOnline:
         )
         self.estimated_trajectory.append(x_hat)
         self.uncertainties.append(P)
-        if np.any(np.isnan(P)):
-            print(f"{dt=}")
