@@ -12,6 +12,7 @@ __all__ = [
     "plot_trajectories",
     "plot_height",
     "plot_crash_site",
+    "plot_crash_site_on_map"
     "plot_error",
     "plot_position_error",
     "plot_velocity_error",
@@ -280,11 +281,11 @@ def plot_crash_site_on_map(
             0, 
             marker='x', 
             color='r', 
-            s=5, 
+            s=10, 
             label = f'True crash: ({normalized_long:.2f}, 0)'
             )
         if estimated_traj is not None:
-            estimated_crash_coords = estimated_traj[-1, :3]
+            estimated_crash_coords = estimated_traj[-1, :2]
             estimated_crash_long = (latlong_from_cart(estimated_crash_coords)/(np.pi/180))  
 
             # normalize longitude coordinate
@@ -296,9 +297,10 @@ def plot_crash_site_on_map(
                 normalized_est_longitude, 
                 0, 
                 marker = 's', 
-                s=5, 
+                s=10, 
                 label = f'Predicted crash: ({normalized_est_longitude:.2f}, 0)'
                 )
+
 
     if dim ==3:
         latlong_crash_coords = (latlong_from_cart(crash_coords)/(np.pi/180))
@@ -317,7 +319,7 @@ def plot_crash_site_on_map(
         m.scatter(normalized_longitude, 
                normalized_latitude, 
                marker='x', color='r', 
-               s=5, 
+               s=10, 
                label = f'True Crash: ({normalized_longitude:.2f}, {normalized_latitude:.2f})'
                )
         if estimated_traj is not None:
@@ -338,11 +340,12 @@ def plot_crash_site_on_map(
                 est_norm_long, 
                 est_norm_lat, 
                 marker = 's', 
-                s=5, 
+                s=10, 
                 label = f'Predicted crash: ({est_norm_long:.2f}, {est_norm_lat:.2f})'
                 )
 
     plt.legend()
+    plt.title(title)
     if show:
         plt.show()
         plt.close()
