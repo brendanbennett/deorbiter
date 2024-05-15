@@ -16,6 +16,7 @@ __all__ = [
     "plot_velocity_error",
     "plot_absolute_error",
     "plot_theoretical_empirical_observation_error",
+    "slice_by_time",
 ]
 
 
@@ -26,6 +27,7 @@ def plot_trajectories(
     title="Trajectories",
     ax=None,
     show=True,
+    tight=False,
 ):
     """
     Plots 2D or 3D trajectories for true, estimated, and noisy measurement data,
@@ -64,8 +66,12 @@ def plot_trajectories(
         ax.set_title(title)
         ax.set_xlabel("Position X")
         ax.set_ylabel("Position Y")
+        xlim, ylim = ax.get_xlim(), ax.get_ylim()
         earth = plt.Circle((0, 0), radius=deorbit.constants.EARTH_RADIUS, fill=False)
         ax.add_patch(earth)
+        if tight:
+            ax.set_xlim(xlim)
+            ax.set_ylim(ylim)
         ax.legend()
     else:
         if ax is None:
@@ -533,3 +539,28 @@ def plot_heatmap(true_traj, estimated_traj, uncertainties):
         print("Length of lats:", len(lats)),
         print("Length of lons:", len(lons)),
     )  # Debugging
+    
+def slice_by_time(arr, times, start_time=None, end_time=None) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Slices an array by time.
+
+    Args:
+        arr (np.ndarray): The array to slice.
+        times (np.ndarray): The times corresponding to each row of the array.
+        start_time (float): The start time of the slice.
+        end_time (float): The end time of the slice.
+
+    :return: The sliced array and corresponding times.
+    """
+    if arr is None:
+        return None
+    
+    arr = np.array(arr)
+    times = np.array(times)
+    start_index = None
+    end_index = None
+    if start_time is not None:
+        start_index = np.argmax(times >= start_time)
+    if end_time is not None:
+        end_index = np.argmax(times > end_time)
+    return arr[start_index:end_index], times[start_index:end_index]
