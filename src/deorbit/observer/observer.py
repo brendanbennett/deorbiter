@@ -7,6 +7,18 @@ from deorbit.utils.coords import cart_from_latlong
 
 
 class Observer:
+    """Class used to observe the state of a satellite during a simulation by modelling radar stations and their uncertainties.
+    
+    :keyword dim: Dimension of the simulation, 2 or 3. Default 2.
+    :keyword radius: Sets the distance of the Earth's radius. Default EARTH_RADIUS.
+    :keyword rotation: Sets the speed in rad/s of the Earth's rotation. Default EARTH_ROTATIONAL_SPEED.
+    :keyword number_of_radars: Determines how many radar stations are used in the simulation. Default 1.
+    :keyword positions_of_radars: Optional numpy array containing [latitude, longitude] for each satellite, otherwise default equally spaced positions set.
+    :keyword radar_noise_factor: Simulates the uncertainty in the measurement. The variance increases linearly as distance to satellite increases. Default 0.1.
+    :ivar observed_states: After the Observer has been run, observed states are stored here to be used in the Predictor.
+    :ivar observed_times: After the Observer has been run, observed times are stored here to be used in the Predictor.
+    :ivar observed_covariances: The noise covariance associated with each state measurement made by the radar stations.
+    """
     def __init__(self, **kwargs):
         """
         ATTRIBUTES:
@@ -51,8 +63,11 @@ class Observer:
 
     @staticmethod
     def _default_radar_positions(number_of_radars: int, dim: int) -> np.ndarray:
-        """
-        Sets default radar positions, returns longitude and latitude of radars equally spaced around the equator.
+        """Sets default radar positions, returns latitude and longitude of radars equally spaced around the equator.
+        
+        :param number_of_radars: Number of radar stations
+        :param dim: Dimension of the simulation
+        :return: Array of latitude and longitude of radar positions. If dim=2, returns 1D array of longitudes.
         """
         if dim == 3:
             rad_default_positions = np.zeros(shape=(number_of_radars, 2))
@@ -66,8 +81,7 @@ class Observer:
         return rad_default_positions
 
     def _radar_position_validator(self):
-        """
-        Validates shape of the numpy array containing radar positions
+        """Validates shape of the numpy array containing radar positions
         """
         if self.dim == 2 and self.positions_of_radars.shape != (self.number_of_radars,):
             raise ValueError(
@@ -81,10 +95,15 @@ class Observer:
                 f"With dim=3, positions_of_radars must be a numpy array with shape ({self.number_of_radars}, 2)"
             )
 
-    def _measurement_noise(self, rad_latlong, sat_state):
-        """
-        Method which returns the observed state with additional measurement noise sampled from a multivariate Gaussian.
+    def _measurement_noise(self, rad_latlong, sat_state) -> tuple[np.ndarray, np.ndarray]:
+        """Method which returns the observed state with additional measurement noise sampled from a multivariate Gaussian.
         The noise increases linearly as distance between the radar and the satellite increases.
+        
+        :param rad_latlong: Latitude and longitude of the radar station
+        :type rad_latlong: Sequence[float, float]
+        :param sat_state: The true state of the satellite
+        :type sat_state: np.ndarray
+        :return: The noisy state and the covariance matrix of the noise.
         """
         distance = np.linalg.norm(
             sat_state[0 : self.dim] - cart_from_latlong(rad_latlong)
@@ -97,8 +116,12 @@ class Observer:
         return noisy_state, cov
 
     def _check_los(self, latlong, state):
-        """
-        Checking line of sight using radar latlong and satellite state
+        """Checking line of sight using radar latlong and satellite state
+        
+        :param latlong: Latitude and longitude of the radar station
+        :type latlong: Sequence[float, float]
+        :param state: The true state of the satellite
+        :type state: np.ndarray
         """
         if (
             np.dot(
@@ -112,8 +135,7 @@ class Observer:
             return False
 
     def plot_config(self):
-        """
-        Method which gives a visual representation of radar station layout
+        """Method which gives a visual representation of radar station layout
         """
         if self.dim == 2:
             fig, ax = plt.subplots()
@@ -167,12 +189,13 @@ class Observer:
             ax.set_title("Earth Radar Station Config")
             plt.show()
 
-    def run(self, sim_states, sim_times, checking_interval):
-        """
-        Runs the simulation of the radar measurements using an instance of the deorbit simulation.
-        Radars check for line of sight at regular time intervals equal to (checking_interval * simulator interval) seconds.
-        Returns self.observed_times and self.observed_states class attributes containing the times and states
-        when the satellite has been observed by a radar station.
+    def run(self, sim_states: np.ndarray, sim_times: np.ndarray, checking_interval: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Method which runs the Observer. The Observer checks for line of sight at regular time intervals equal to (checking_interval * simulator interval) seconds.
+        
+        :param sim_states: The states of the satellite given by the Simulator
+        :param sim_times: The times of each state given by the Simulator
+        :param checking_interval: Radars check for line of sight at regular time intervals equal to (checking_interval * simulator time step) seconds.
+        :return: The observed states, times and covariances
         """
         if sim_states.shape[1] != 2 * self.dim:
             raise ValueError(
@@ -229,3 +252,5 @@ class Observer:
         self.observed_times = np.array(times_observed)
         self.observed_states = np.array(states_observed)
         self.observed_covariances = np.array(covariances)
+        
+        return self.observed_states, self.observed_times, self.observed_covariances

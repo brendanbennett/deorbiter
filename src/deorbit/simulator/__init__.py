@@ -9,6 +9,8 @@ The module includes the following main components:
 
 - **Simulator**: An abstract base class for all simulators.
 - **EulerSimulator**, **AdamsBashforthSimulator**, **RK4Simulator**: Subclasses of Simulator that implement specific numerical methods.
+- **AtmosphereModel**: An abstract base class for all atmosphere models.
+- **CoesaAtmosFast**, **CoesaAtmos**, **ZeroAtmos**: Subclasses of AtmosphereModel that implement specific atmosphere models.
 - **Utility functions**: A set of functions to validate and retrieve simulation settings and run simulations with specific configurations.
 """
 

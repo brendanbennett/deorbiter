@@ -497,7 +497,9 @@ class RK4Simulator(Simulator, method_name="RK4"):
 
 
 def raise_for_invalid_sim_method(sim_method: str) -> None:
-    """Raises ValueError if the given simulation method name is not defined"""
+    """Raises ValueError if the given simulation method name is not defined
+    :meta private:
+    """
     available_methods = list(get_available_sim_methods().keys())
     if sim_method not in available_methods:
         raise ValueError(
@@ -508,7 +510,9 @@ def raise_for_invalid_sim_method(sim_method: str) -> None:
 def raise_for_invalid_noise_type(
     noise_types: dict[str, dict | NoiseKwargs] | None
 ) -> None:
-    """Raises ValueError if any of the given list of noise types is not defined"""
+    """Raises ValueError if any of the given list of noise types is not defined
+    :meta private:
+    """
     if noise_types is None:
         return
     if isinstance(noise_types, str):
@@ -525,8 +529,7 @@ def raise_for_invalid_noise_type(
 def get_available_sim_methods() -> dict[str, type[Simulator]]:
     """Python magic to find the names of implemented simulation methods.
 
-    Returns:
-        dict[str, subclass(Simulator)]: a dictionary of `{name: method class}`
+    :return: A dictionary of simulation method names and their corresponding classes.
     """
     return Simulator._methods
 
@@ -534,7 +537,7 @@ def get_available_sim_methods() -> dict[str, type[Simulator]]:
 def generate_sim_config(
     sim_method: str,
     atmos_model: str,
-    initial_state: npt.ArrayLike,
+    initial_state: np.ndarray,
     initial_time: float = 0.0,
     time_step: float = 0.1,
     noise_types: dict[str, dict | NoiseKwargs] | None = None,
