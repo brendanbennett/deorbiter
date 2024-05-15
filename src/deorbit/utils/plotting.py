@@ -223,3 +223,29 @@ def plot_absolute_error(true_traj, estimated_traj):
         plt.title('Absolute Error')
         plt.legend()
         plt.show()
+        
+def plot_theoretical_empirical_observation_error(sim_states, sim_times, observation_states, observation_times, observed_covariances):
+    fig, (ax1, ax2) = plt.subplots(2,1, figsize=(6,8))
+    
+
+    sim_times_observed = np.array([i for i, t in enumerate(sim_times) if t in observation_times])
+    vel_observation_error = np.linalg.norm((observation_states - sim_states[sim_times_observed])[:, 3:], axis=1)
+    vel_std = np.sqrt(observed_covariances[:,3,3])
+    ax1.plot(observation_times, vel_observation_error, label="Empirical")
+    ax1.plot(observation_times, vel_std*np.sqrt(3), label="Theoretical")
+    ax1.set_xlabel("Time [s]")
+    ax1.set_ylabel("Velocity error [m/s]")
+    ax1.set_title("Velocity measurement error")
+    ax1.legend()
+    
+    pos_observation_error = np.linalg.norm((observation_states - sim_states[sim_times_observed])[:, :3], axis=1)
+    pos_std = np.sqrt(observed_covariances[:,0,0])
+    ax2.plot(observation_times, pos_observation_error, label="Empirical")
+    ax2.plot(observation_times, pos_std*np.sqrt(3), label="Theoretical")
+    ax2.set_xlabel("Time [s]")
+    ax2.set_ylabel("Position error [m]")
+    ax2.set_title("Position measurement error")
+    ax2.legend()
+    
+    fig.set_constrained_layout(True)
+    plt.show()
