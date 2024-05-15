@@ -44,7 +44,7 @@ def plot_trajectories(
     if len(true_traj[0]) == 2:
         if ax is None:
             fig, ax = plt.subplots()
-        ax.plot(true_traj[:, 0], true_traj[:, 1], label="True Trajectory")
+        ax.plot(true_traj[:, 0], true_traj[:, 1], label="True Trajectory", alpha = 0.7)
         ax.set_aspect('equal')
         if observations is not None:
             ax.scatter(
@@ -53,6 +53,8 @@ def plot_trajectories(
                 marker="x",
                 color="r",
                 label="Noisy Measurements",
+                alpha=0.7,
+                s = 10
             )
         if estimated_traj is not None:
             ax.plot(
@@ -76,7 +78,7 @@ def plot_trajectories(
             fig = plt.figure()
             ax = fig.add_subplot(111, projection="3d")
         ax.plot(
-            true_traj[:, 0], true_traj[:, 1], true_traj[:, 2], label="True Trajectory"
+            true_traj[:, 0], true_traj[:, 1], true_traj[:, 2], label="True Trajectory", alpha = 0.7
         )
         if observations is not None:
             ax.scatter(
@@ -86,6 +88,8 @@ def plot_trajectories(
                 marker="x",
                 color="r",
                 label="Noisy Measurements",
+                s=10,
+                alpha=0.7
             )
         if estimated_traj is not None:
             ax.plot(
@@ -99,7 +103,7 @@ def plot_trajectories(
         ax.set_xlabel("Position X")
         ax.set_ylabel("Position Y")
         ax.set_zlabel("Position Z")
-        ax.set_aspect('equal')
+       # ax.set_aspect('equal')
 
 
         # plotting EARTH
@@ -151,6 +155,8 @@ def plot_height(
         np.array(times) / 60,
         (np.linalg.norm(true_traj, axis=1) - deorbit.constants.EARTH_RADIUS) / 1000,
         label="True Height",
+        alpha=0.9,
+        color = 'darkblue'
     )
     if observations is not None:
         ax.scatter(
@@ -160,6 +166,8 @@ def plot_height(
             marker="x",
             color="r",
             label="Noisy Measurements",
+            alpha=0.7,
+            s=10
         )
     if estimated_traj is not None:
         ax.plot(
@@ -168,6 +176,8 @@ def plot_height(
             / 1000,
             label="Estimated Trajectory",
             linestyle="--",
+            color='k',
+            lw=2
         )
     ax.set_title(title)
     ax.set_xlabel("Time (min)")
