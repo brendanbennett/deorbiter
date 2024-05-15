@@ -117,6 +117,7 @@ def plot_height(
     estimated_traj=None,
     observations=None,
     observation_times=None,
+    estimated_times = None,
     title="Height",
     ax=None,
     show=True,
@@ -130,6 +131,7 @@ def plot_height(
         estimated_traj (np.ndarray, optional): Estimated trajectory data points. Defaults to None.
         observations (np.ndarray, optional): Noisy measurement data points. Defaults to None.
         observation_times (np.ndarray, optional): Timestamps for the observations. Defaults to None.
+        estimated_times (np.ndarry, optional): Timestamps from the estimator. Defaults to None
         title (str): The title of the plot.
         ax (matplotlib.axes.Axes, optional): The axes to plot on. Defaults to None.
         show (bool): Whether to display the plot. Defaults to True.
@@ -152,14 +154,14 @@ def plot_height(
         )
     if estimated_traj is not None:
         ax.plot(
-            np.array(times) / 60,
+            np.array(estimated_times) / 60,
             (np.linalg.norm(estimated_traj, axis=1) - deorbit.constants.EARTH_RADIUS)
             / 1000,
             label="Estimated Trajectory",
             linestyle="--",
         )
     ax.set_title(title)
-    ax.set_xlabel("Time (m)")
+    ax.set_xlabel("Time (min)")
     ax.set_ylabel("Height")
     ax.legend()
     if show:
