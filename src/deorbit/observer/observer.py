@@ -95,6 +95,7 @@ class Observer:
         distance = np.linalg.norm(
             sat_state[0 : self.dim] - cart_from_latlong(rad_latlong)
         )
+        
         variance = distance * self.radar_variance_per_m
 
         cov = np.eye(self.dim * 2) * variance

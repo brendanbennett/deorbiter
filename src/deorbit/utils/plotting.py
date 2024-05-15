@@ -65,7 +65,35 @@ def plot_height(true_traj, times, estimated_traj = None, observations = None, ob
     plt.show()
     plt.close()
 
+def plot_crash_site(true_traj, estimated_traj = None, observations = None, title = 'Crash Site'):
+    if len(true_traj[0]) == 2:
+        crash_coords = true_traj[-1, :]
+        fig, ax = plt.subplots()
+        ax.plot(true_traj[:, 0], true_traj[:, 1], label='True Trajectory')
+        if observations is not None:
+            ax.scatter(observations[:, 0], observations[:, 1], marker='x', color='r', label='Noisy Measurements')
+        if estimated_traj is not None:
+            ax.plot(estimated_traj[:, 0], estimated_traj[:, 1], label='Estimated Trajectory', linestyle='--')
+        ax.set_title(title)
+        ax.set_xlabel('Position X')
+        ax.set_ylabel('Position Y')
+        ax.set_xlim([crash_coords[0]-5e5, crash_coords[0]+5e5])
+        ax.set_ylim([crash_coords[1]-5e5, crash_coords[1]+5e5])
+        earth = plt.Circle((0, 0), radius=deorbit.constants.EARTH_RADIUS, fill=False)
+        ax.add_patch(earth)
+        ax.legend()
+        plt.show()
+        plt.close()
+    else: 
+        print('Crash Site Visualisation works in 2D only')
 
+def plot_from_last_measurements(true_traj, estimated_traj = None, observations = None, observation_times = None, no_measurements = 1, title = 'Plot from last Measurements'):
+    last_measurements = observations[-no_measurements:, :]
+    last_traj = true_traj[-no_measurements:, :]
+    last_estimated_traj = estimated_traj[-no_measurements:, :]
+    plot_trajectories(last_traj, estimated_traj = last_estimated_traj, observations=last_measurements)
+
+    
     
 def plot_error(true_traj, estimated_traj, title="Error in Trajectories"):
     true_traj = np.array(true_traj)
