@@ -196,6 +196,9 @@ class IcaoAtmos(AtmosphereModel, model_name="icao_standard_atmos"):
 
 class CoesaAtmos(AtmosphereModel, model_name="coesa_atmos"):
     """Uses the COESA76 model to calculate atmospheric density. The most accurate model. This uses lazy importing of the coesa76 model from :mod:`pyatmos`.
+    
+    :param kwargs: The keyword arguments required by the COESA76 model.
+    :type kwargs: CoesaKwargs
     """
     def __init__(self, kwargs: CoesaKwargs):
         # Lazy import of coesa76
@@ -209,11 +212,26 @@ class CoesaAtmos(AtmosphereModel, model_name="coesa_atmos"):
     
     def derivative(self, state: np.ndarray, time: float) -> float:
         """:meta private:"""
+        """
+        Raises NotImplementedError indicating that the derivative method is not implemented for this model.
+        :raises NotImplementedError: Always raised to indicate this method is not implemented.
+        """
+        
         raise NotImplementedError(
             f"Derivative not implemented for {self.__class__.__name__}"
         )
 
     def density(self, state: np.ndarray, time: float) -> float:
+        """
+        Calculate the atmospheric density using the COESA76 model based on the current state.
+
+        :param state: The current state vector of the system.
+        :type state: np.ndarray
+        :param time: The current time of the system.
+        :type time: float
+        :return: The atmospheric density at the given state.
+        :rtype: float
+        """
         dim = int(len(state) / 2)
         position = state[:dim]
 
@@ -223,9 +241,20 @@ class CoesaAtmos(AtmosphereModel, model_name="coesa_atmos"):
 
 
 class CoesaAtmosFast(AtmosphereModel, model_name="coesa_atmos_fast"):
-    """Uses a lookup table of COESA76 atmosphere densities to calculate quicker. Marginally less accurate than CoesaAtmos."""
+    """
+    Uses a lookup table of COESA76 atmosphere densities to calculate quicker. Marginally less accurate than CoesaAtmos.
+
+    :param kwargs: The keyword arguments required by the COESA76 fast model.
+    :type kwargs: CoesaFastKwargs
+    """
 
     def __init__(self, kwargs: CoesaFastKwargs):
+        """
+        Initialize the CoesaAtmosFast model.
+
+        :param kwargs: The keyword arguments required by the COESA76 fast model.
+        :type kwargs: CoesaFastKwargs
+        """
         self.kwargs: CoesaFastKwargs = kwargs
         assert (
             self.kwargs.precision >= 0
@@ -258,6 +287,17 @@ class CoesaAtmosFast(AtmosphereModel, model_name="coesa_atmos_fast"):
         self._derivatives = dict(zip(sample_heights, sampled_derivatives))
 
     def density(self, state: np.ndarray, time: float) -> float:
+        """
+        Calculate the atmospheric density using a lookup table of COESA76 densities.
+
+        :param state: The current state vector of the system.
+        :type state: np.ndarray
+        :param time: The current time of the system.
+        :type time: float
+        :return: The atmospheric density at the given state.
+        :rtype: float
+        :raises Exception: If the height is not supported by the COESA76-fast atmosphere model.
+        """
         dim = int(len(state) / 2)
         position = state[:dim]
 
@@ -279,6 +319,17 @@ class CoesaAtmosFast(AtmosphereModel, model_name="coesa_atmos_fast"):
         return rho
 
     def derivative(self, state: np.ndarray, time: float) -> float:
+        """
+        Calculate the derivative of the atmospheric density with respect to height using a lookup table.
+
+        :param state: The current state vector of the system.
+        :type state: np.ndarray
+        :param time: The current time of the system.
+        :type time: float
+        :return: The derivative of the atmospheric density at the given state.
+        :rtype: float
+        :raises Exception: If the height is not supported by the COESA76-fast atmosphere model.
+        """
         # TODO: Fix this: has a bump
         dim = int(len(state) / 2)
         position = state[:dim]

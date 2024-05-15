@@ -10,6 +10,15 @@ def cart_from_latlong(latlong, radius: float = EARTH_RADIUS):
     Given a sequence of latitude and longitude, calculates the cartesian coordinates of a point on the Earth's surface.
     This does not account for the rotation of the Earth; we assume 0N, 0E is at (1, 0, 0).
     If working in 2D, latlong should be a scalar representing longitude.
+
+    :param latlong: The latitude and longitude (or just longitude for 2D) of the point.
+    :type latlong: float or sequence of floats
+    :param radius: The radius of the Earth (or other body), defaults to EARTH_RADIUS.
+    :type radius: float
+    :return: The Cartesian coordinates of the point.
+    :rtype: np.ndarray
+    :raises ValueError: If the radius is not positive or if the latitude is out of bounds.
+    :raises ValueError: If `latlong` is not of length 1 or 2.
     """
     if not radius > 0:
         raise ValueError("radius must be positive")
@@ -34,6 +43,14 @@ def latlong_from_cart(cart, return_radius: bool = False):
     This point is the intersection of the line from the origin to the point and the Earth's surface.
     This does not account for the rotation of the Earth; we assume 0N, 0E is at (1, 0, 0).
     If working in 2D, only returns longitude.
+
+    :param cart: The Cartesian coordinates of the point.
+    :type cart: sequence of floats
+    :param return_radius: Whether to return the radius as well, defaults to False.
+    :type return_radius: bool
+    :return: The latitude and longitude (and radius if specified) of the point.
+    :rtype: np.ndarray
+    :raises ValueError: If `cart` is not of length 2 or 3.
     """
     if len(cart) == 3:
         x, y, z = cart
@@ -54,7 +71,9 @@ def latlong_from_cart(cart, return_radius: bool = False):
 
 
 def earth_rotation(
-    cart_vector: Sequence[float], time: float, return_radius: bool = False
+    cart_vector: Sequence[float], 
+    time: float, 
+    return_radius: bool = False
 ) -> np.ndarray:
     """Calculate the real latitude and longitude of a cartesian point above Earth's surface due to the Earth's rotation underneath it.
 
@@ -78,7 +97,9 @@ def earth_rotation(
 
 
 def earth_rotation_array(
-    cart_positions: np.ndarray, times: float, return_radius: bool = True
+    cart_positions: np.ndarray, 
+    times: float, 
+    return_radius: bool = True
 ) -> np.ndarray:
     """Calculate the real latitude and longitude of points above Earth's surface due to the Earth's rotation underneath it over time.
     Useful for plotting trajectories on a real map.
