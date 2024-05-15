@@ -40,7 +40,11 @@ class Observer:
             "positions_of_radars",
             self._default_radar_positions(self.number_of_radars, self.dim),
         )
-        self.radar_variance_per_m: float = kwargs.get("radar_noise_factor", 0.1)
+        # Observation distances are about 50-500km.
+        self.radar_position_std_per_distance: float = kwargs.get("radar_position_std_per_distance", 0.005)
+        # Want distance to only play a small role, in order to make velocity error more relative
+        self.radar_velocity_std_per_distance: float = kwargs.get("radar_velocity_std_per_distance", 0.000001)
+        self.radar_velocity_std_per_speed: float = kwargs.get("radar_velocity_std_per_speed", 0.0005)
         self.observed_states: list[list[float]] | None = None
         self.observed_times: list[float] | None = None
         self.observed_covariances: npt.NDArray = None
@@ -95,12 +99,14 @@ class Observer:
         distance = np.linalg.norm(
             sat_state[0 : self.dim] - cart_from_latlong(rad_latlong)
         )
-        
-        variance = distance * self.radar_variance_per_m
+        speed = np.linalg.norm(sat_state[self.dim :])
+        pos_std = distance * self.radar_position_std_per_distance
+        vel_std = distance * self.radar_velocity_std_per_distance + speed * self.radar_velocity_std_per_speed
 
-        cov = np.eye(self.dim * 2) * variance
+        cov = np.eye(self.dim * 2)
+        cov[:self.dim, :self.dim] *= pos_std ** 2
+        cov[self.dim:, self.dim:] *= vel_std ** 2
         noisy_state = np.random.multivariate_normal(sat_state, cov)
-
         return noisy_state, cov
 
     def _check_los(self, latlong, state):
