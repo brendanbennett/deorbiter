@@ -10,6 +10,19 @@ from mpl_toolkits.basemap import Basemap
 
 
 def plot_trajectories(true_traj, estimated_traj = None, observations = None, title="Trajectories"):
+    """
+    Plots 2D or 3D trajectories for true, estimated, and noisy measurement data,
+    including a representation of Earth when relevant.
+
+    Args:
+        true_traj (np.ndarray): The true trajectory data points as a NumPy array.
+        estimated_traj (np.ndarray, optional): The estimated trajectory data points. Defaults to None.
+        observations (np.ndarray, optional): The noisy measurements of the trajectory. Defaults to None.
+        title (str): The title of the plot.
+
+    Returns:
+        A matplotlib plot of the trajectories and measurements with Earth's representation if applicable.
+    """
     if len(true_traj[0]) == 2:
         fig, ax = plt.subplots()
         ax.plot(true_traj[:, 0], true_traj[:, 1], label='True Trajectory')
@@ -55,6 +68,20 @@ def plot_trajectories(true_traj, estimated_traj = None, observations = None, tit
         plt.close()
 
 def plot_height(true_traj, times, estimated_traj = None, observations = None, observation_times = None, title = 'Height'):
+    """
+    Plots the height over time from Earth's surface for true, estimated, and noisy measurements.
+
+    Args:
+        true_traj (np.ndarray): True trajectory data points.
+        times (np.ndarray): Timestamps corresponding to the true trajectory data points.
+        estimated_traj (np.ndarray, optional): Estimated trajectory data points. Defaults to None.
+        observations (np.ndarray, optional): Noisy measurement data points. Defaults to None.
+        observation_times (np.ndarray, optional): Timestamps for the observations. Defaults to None.
+        title (str): The title of the plot.
+
+    Returns:
+        A line plot representing the height from Earth's surface for each trajectory type over time.
+    """
     fig, ax = plt.subplots()
     ax.plot(np.array(times) / 60, (np.linalg.norm(true_traj, axis=1) - deorbit.constants.EARTH_RADIUS)/1000, label = 'True Height')
     if observations is not None:
@@ -69,6 +96,18 @@ def plot_height(true_traj, times, estimated_traj = None, observations = None, ob
     plt.close()
 
 def plot_crash_site(true_traj, estimated_traj = None, observations = None, title = 'Crash Site'):
+    """
+    Plots the final crash site in 2D, including trajectories and observations up to the crash point.
+
+    Args:
+        true_traj (np.ndarray): The true trajectory data points.
+        estimated_traj (np.ndarray, optional): The estimated trajectory data points. Defaults to None.
+        observations (np.ndarray, optional): Noisy measurements of the trajectory. Defaults to None.
+        title (str): The title of the plot.
+
+    Returns:
+        A 2D plot centered around the crash site with trajectory and observation data.
+    """
     if len(true_traj[0]) == 2:
         crash_coords = true_traj[-1, :]
         fig, ax = plt.subplots()
@@ -93,6 +132,17 @@ def plot_crash_site(true_traj, estimated_traj = None, observations = None, title
 
     
 def plot_error(true_traj, estimated_traj, title="Error in Trajectories"):
+    """
+    Plots the norm of the error between the true and estimated trajectories over time.
+
+    Args:
+        true_traj (np.ndarray): The true trajectory data points.
+        estimated_traj (np.ndarray): The estimated trajectory data points.
+        title (str): The title of the plot.
+
+    Returns:
+        A line plot showing the error between the true and estimated trajectories over time.
+    """
     true_traj = np.array(true_traj)
     estimated_traj = np.array(estimated_traj)
     error = np.linalg.norm(true_traj - estimated_traj, axis=1)
@@ -104,6 +154,21 @@ def plot_error(true_traj, estimated_traj, title="Error in Trajectories"):
     plt.show()
  
 def Three_Dim_Slice_Trajectory(true_traj, estimated_traj, observation_states, observation_times, sim_times, dt, Three_Dim_crash_coords):
+    """
+    Plots a 3D trajectory slice for a specified time duration around the first observation time, including a crash site marker.
+
+    Args:
+        true_traj (np.ndarray): The true trajectory data points.
+        estimated_traj (np.ndarray): The estimated trajectory data points.
+        observation_states (np.ndarray): Observed states during the trajectory.
+        observation_times (np.ndarray): Timestamps for each observation.
+        sim_times (np.ndarray): Simulation timestamps.
+        dt (float): Time step duration.
+        Three_Dim_crash_coords (tuple): 3D coordinates for the crash site.
+
+    Returns:
+        A 3D plot of the true and estimated trajectory segments and observations within the specified duration.
+    """
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
@@ -129,6 +194,17 @@ def Three_Dim_Slice_Trajectory(true_traj, estimated_traj, observation_states, ob
     plt.show()
 
 def plot_position_error(true_traj, estimated_traj, observation_states):
+    """
+    Plots the position error between the true and estimated trajectories in 2D or 3D.
+
+    Args:
+        true_traj (np.ndarray): The true trajectory data points.
+        estimated_traj (np.ndarray): The estimated trajectory data points.
+        observation_states (np.ndarray): Observed states during the trajectory (not used in error calculation).
+
+    Returns:
+        A plot indicating position errors in either 2D or 3D depending on the trajectory data dimensionality.
+    """
     # Calculate absolute error between true and estimated trajectories
     error = np.abs(true_traj - estimated_traj)
 
@@ -155,6 +231,16 @@ def plot_position_error(true_traj, estimated_traj, observation_states):
         plt.show()
 
 def plot_velocity_error(true_traj, estimated_traj):
+    """
+    Plots the velocity error between the true and estimated trajectories in 2D or 3D.
+
+    Args:
+        true_traj (np.ndarray): The true trajectory data points.
+        estimated_traj (np.ndarray): The estimated trajectory data points.
+
+    Returns:
+        A plot indicating velocity errors in either 2D or 3D depending on the trajectory data dimensionality.
+    """
     # Calculate velocity for true and estimated trajectories
     true_velocity = np.diff(true_traj, axis=0)
     estimated_velocity = np.diff(estimated_traj, axis=0)
@@ -185,6 +271,17 @@ def plot_velocity_error(true_traj, estimated_traj):
         plt.show()
 
 def plot_velocity_error(true_traj, estimated_traj, title="Error in Velocity"):
+    """
+    Plots the velocity error over time for true and estimated trajectories.
+
+    Args:
+        true_traj (np.ndarray): The true trajectory data points.
+        estimated_traj (np.ndarray): The estimated trajectory data points.
+        title (str): The title of the plot.
+
+    Returns:
+        A line plot showing the velocity error over time.
+    """
     true_velocities = np.diff(true_traj, axis=0)
     estimated_velocities = np.diff(estimated_traj, axis=0)
     error = np.abs(true_velocities - estimated_velocities)
@@ -196,6 +293,16 @@ def plot_velocity_error(true_traj, estimated_traj, title="Error in Velocity"):
     plt.show()
 
 def plot_absolute_error(true_traj, estimated_traj):
+    """
+    Plots the absolute error between true and estimated trajectories for all coordinates.
+
+    Args:
+        true_traj (np.ndarray): The true trajectory data points.
+        estimated_traj (np.ndarray): The estimated trajectory data points.
+
+    Returns:
+        A plot of the absolute error vectors between the trajectories, in either 2D or 3D.
+    """
     # Calculate absolute error between true and estimated trajectories
     error = np.abs(true_traj - estimated_traj)
 
@@ -222,9 +329,20 @@ def plot_absolute_error(true_traj, estimated_traj):
         plt.show()
         
 def plot_theoretical_empirical_observation_error(sim_states, sim_times, observation_states, observation_times, observed_covariances):
-    fig, (ax1, ax2) = plt.subplots(2,1, figsize=(6,8))
-    
+    """
+    Plots both theoretical and empirical observation errors for position and velocity.
 
+    Args:
+        sim_states (np.ndarray): Simulated states over time.
+        sim_times (np.ndarray): Timestamps for simulated states.
+        observation_states (np.ndarray): Observed states.
+        observation_times (np.ndarray): Timestamps for observed states.
+        observed_covariances (np.ndarray): Covariance matrices for the observations.
+
+    Returns:
+        Two plots in a single figure: one for velocity error and one for position error, comparing empirical and theoretical values.
+    """
+    fig, (ax1, ax2) = plt.subplots(2,1, figsize=(6,8))
     sim_times_observed = np.array([i for i, t in enumerate(sim_times) if t in observation_times])
     vel_observation_error = np.linalg.norm((observation_states - sim_states[sim_times_observed])[:, 3:], axis=1)
     vel_std = np.sqrt(observed_covariances[:,3,3])
@@ -248,6 +366,17 @@ def plot_theoretical_empirical_observation_error(sim_states, sim_times, observat
     plt.show()
     
 def plot_heatmap(true_traj, estimated_traj, uncertainties):
+    """
+    Generates a heatmap of the impact location probability based on trajectory uncertainties.
+
+    Args:
+        true_traj (np.ndarray): The true trajectory data points.
+        estimated_traj (np.ndarray): The estimated trajectory data points.
+        uncertainties (np.ndarray): Uncertainty matrices associated with each trajectory point.
+
+    Returns:
+        A heatmap over a geographic map displaying the probability density of the impact location.
+    """
     crash_coords = true_traj[-1, :]
     dim = estimated_traj.shape[1] // 2
     mean_trajectory = estimated_traj[:, :dim]  # Extract position data
