@@ -6,7 +6,11 @@ import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 import deorbit
 from mpl_toolkits.basemap import Basemap
-from deorbit.utils.coords import latlong_from_cart, earth_rotation, earth_rotation_array
+from deorbit.utils.coords import (
+    latlong_from_cart,
+    earth_rotation,
+    earth_rotation_array,
+)
 from matplotlib.patches import Ellipse
 
 __all__ = [
@@ -44,12 +48,14 @@ def plot_trajectories(
         show (bool): Whether to display the plot. Defaults to True.
     """
     if len(true_traj[0]) in [4, 6]:
-        true_traj = true_traj[:, :len(true_traj[0]) // 2]
-    
+        true_traj = true_traj[:, : len(true_traj[0]) // 2]
+
     if len(true_traj[0]) == 2:
         if ax is None:
             fig, ax = plt.subplots()
-        ax.plot(true_traj[:, 0], true_traj[:, 1], label="True Trajectory", alpha=0.7)
+        ax.plot(
+            true_traj[:, 0], true_traj[:, 1], label="True Trajectory", alpha=0.7
+        )
         ax.set_aspect("equal")
         if observations is not None:
             ax.scatter(
@@ -72,7 +78,9 @@ def plot_trajectories(
         ax.set_xlabel("Position X")
         ax.set_ylabel("Position Y")
         xlim, ylim = ax.get_xlim(), ax.get_ylim()
-        earth = plt.Circle((0, 0), radius=deorbit.constants.EARTH_RADIUS, fill=False)
+        earth = plt.Circle(
+            (0, 0), radius=deorbit.constants.EARTH_RADIUS, fill=False
+        )
         ax.add_patch(earth)
         if tight:
             ax.set_xlim(xlim)
@@ -158,13 +166,14 @@ def plot_height(
         show (bool): Whether to display the plot. Defaults to True.
     """
     if len(true_traj[0]) in [4, 6]:
-        true_traj = true_traj[:, :len(true_traj[0]) // 2]
-    
+        true_traj = true_traj[:, : len(true_traj[0]) // 2]
+
     if ax is None:
         fig, ax = plt.subplots()
     ax.plot(
         np.array(times) / 60,
-        (np.linalg.norm(true_traj, axis=1) - deorbit.constants.EARTH_RADIUS) / 1000,
+        (np.linalg.norm(true_traj, axis=1) - deorbit.constants.EARTH_RADIUS)
+        / 1000,
         label="True Height",
         alpha=0.9,
         color="darkblue",
@@ -172,7 +181,10 @@ def plot_height(
     if observations is not None:
         ax.scatter(
             np.array(observation_times) / 60,
-            (np.linalg.norm(observations, axis=1) - deorbit.constants.EARTH_RADIUS)
+            (
+                np.linalg.norm(observations, axis=1)
+                - deorbit.constants.EARTH_RADIUS
+            )
             / 1000,
             marker="x",
             color="r",
@@ -182,10 +194,13 @@ def plot_height(
         )
     if estimated_traj is not None:
         if len(estimated_traj[0]) in [4, 6]:
-            estimated_traj = estimated_traj[:, :len(estimated_traj[0]) // 2]
+            estimated_traj = estimated_traj[:, : len(estimated_traj[0]) // 2]
         ax.plot(
             np.array(estimated_times) / 60,
-            (np.linalg.norm(estimated_traj, axis=1) - deorbit.constants.EARTH_RADIUS)
+            (
+                np.linalg.norm(estimated_traj, axis=1)
+                - deorbit.constants.EARTH_RADIUS
+            )
             / 1000,
             label="Estimated Trajectory",
             linestyle="--",
@@ -243,7 +258,9 @@ def plot_crash_site(
         ax.set_ylabel("Position Y")
         ax.set_xlim([crash_coords[0] - 5e5, crash_coords[0] + 5e5])
         ax.set_ylim([crash_coords[1] - 5e5, crash_coords[1] + 5e5])
-        earth = plt.Circle((0, 0), radius=deorbit.constants.EARTH_RADIUS, fill=False)
+        earth = plt.Circle(
+            (0, 0), radius=deorbit.constants.EARTH_RADIUS, fill=False
+        )
         ax.add_patch(earth)
         ax.legend()
     else:
@@ -251,6 +268,7 @@ def plot_crash_site(
     if show:
         plt.show()
         plt.close()
+
 
 def _normalize_latlong(latlong):
     lat, long = latlong
@@ -265,30 +283,37 @@ def _normalize_latlong(latlong):
         normalized_longitude -= 360  # Convert to [-180, 180] range
     return np.array((normalized_latitude, normalized_longitude))
 
-def plot_crash_site_on_map(
-    true_traj,
-    true_times,
-    estimated_traj=None,
-    estimated_times=None,
-    uncertainties=None,
+
+def plot_trajectories_on_map(
+    true_traj: np.ndarray,
+    true_times: np.ndarray,
+    estimated_traj: np.ndarray | None = None,
+    estimated_times: np.ndarray | None = None,
+    only_crash_sites: bool = False,
+    uncertainties: np.ndarray | None = None,
     title="Crash Site",
-    ax=None,
-    show=True,
+    ax: plt.Axes | None = None,
+    show: bool = True,
 ):
     """
     Plots the final crash site on a 2D map, including the estaimated crash site if it is supplied
-
+    
     Args:
-    true_traj (np.ndarray): The true trajectory data points.
-    estimated_traj (np.ndarray, optional): The estimated trajectory data points. Defaults to None.
-    uncertainties (np.ndarray): covariance arrays associated with trajectory data points. Defaults to None
-    title (str): The title of the plot.
+        true_traj (np.ndarray): The true trajectory data points.
+        true_times (np.ndarray): Timestamps for each data point.
+        estimated_traj (np.ndarray, optional): The estimated trajectory data points. Defaults to None.
+        estimated_times (np.ndarray, optional): Timestamps for each estimated data point. Defaults to None.
+        only_crash_sites (bool): Whether to only plot the crash sites. Defaults to False.
+        uncertainties (np.ndarray): covariance arrays associated with trajectory data points. Defaults to None
+        title (str): The title of the plot.
+        ax (matplotlib.axes.Axes, optional): The axes to plot on. Defaults to None.
+        show (bool): Whether to display the plot. Defaults to True.
     """
     if len(true_traj[0]) in [4, 6]:
-        true_traj = true_traj[:, :len(true_traj[0]) // 2]
+        true_traj = true_traj[:, : len(true_traj[0]) // 2]
     if estimated_traj is not None and len(estimated_traj[0]) in [4, 6]:
-        estimated_traj = estimated_traj[:, :len(estimated_traj[0]) // 2]
-    
+        estimated_traj = estimated_traj[:, : len(estimated_traj[0]) // 2]
+
     crash_coords = true_traj[-1, :]
     dim = len(crash_coords)
 
@@ -320,7 +345,9 @@ def plot_crash_site_on_map(
                 np.pi / 180
             )
 
-            _, normalized_est_longitude = _normalize_latlong((0, estimated_crash_long))
+            _, normalized_est_longitude = _normalize_latlong(
+                (0, estimated_crash_long)
+            )
 
             m.scatter(
                 normalized_est_longitude,
@@ -342,10 +369,13 @@ def plot_crash_site_on_map(
         latlong_coords = earth_rotation_array(true_traj, true_times)[:, :2]
         latlong_coords /= np.pi / 180
 
-        norm_latlong = np.array([_normalize_latlong(latlong) for latlong in latlong_coords])
+        norm_latlong = np.array(
+            [_normalize_latlong(latlong) for latlong in latlong_coords]
+        )
         crash_norm_lat, crash_norm_long = norm_latlong[-1]
-        
-        m.plot(norm_latlong[:, 1], norm_latlong[:, 0], label="True Trajectory")
+
+        if not only_crash_sites:
+            m.plot(norm_latlong[:, 1], norm_latlong[:, 0], label="True Trajectory")
         # plot crash point
         m.scatter(
             crash_norm_long,
@@ -356,13 +386,23 @@ def plot_crash_site_on_map(
             label=f"True Crash: ({crash_norm_long:.2f}, {crash_norm_lat:.2f})",
         )
         if estimated_traj is not None:
-            est_latlong_coords = earth_rotation_array(estimated_traj, estimated_times)[:, :2]
+            est_latlong_coords = earth_rotation_array(
+                estimated_traj, estimated_times
+            )[:, :2]
             est_latlong_coords /= np.pi / 180
 
-            norm_est_latlong = np.array([_normalize_latlong(latlong) for latlong in est_latlong_coords])
+            norm_est_latlong = np.array(
+                [_normalize_latlong(latlong) for latlong in est_latlong_coords]
+            )
             crash_est_norm_lat, crash_est_norm_long = norm_est_latlong[-1]
-            
-            m.plot(norm_est_latlong[:, 1], norm_est_latlong[:, 0], label="Estimated Trajectory", linestyle="--")
+
+            if not only_crash_sites:
+                m.plot(
+                    norm_est_latlong[:, 1],
+                    norm_est_latlong[:, 0],
+                    label="Estimated Trajectory",
+                    linestyle="--",
+                )
             m.scatter(
                 crash_est_norm_long,
                 crash_est_norm_lat,
@@ -541,7 +581,9 @@ def plot_position_error(
         observation_error = np.linalg.norm(
             observation_states[:dim] - true_traj[:dim], axis=1
         )
-        ax.scatter(observation_times, observation_error, label="Error in Observations")
+        ax.scatter(
+            observation_times, observation_error, label="Error in Observations"
+        )
     ax.set_title("Error in Position")
     ax.set_xlabel("Time [s]")
     ax.set_ylabel("Error [m]")
@@ -586,7 +628,9 @@ def plot_velocity_error(
         observation_error = np.linalg.norm(
             observation_states[dim:] - true_traj[dim:], axis=1
         )
-        ax.scatter(observation_times, observation_error, label="Error in Observations")
+        ax.scatter(
+            observation_times, observation_error, label="Error in Observations"
+        )
     ax.set_title("Error in Velocity")
     ax.set_xlabel("Time [s]")
     ax.set_ylabel("Error [m]")
@@ -620,11 +664,19 @@ def plot_theoretical_empirical_observation_error(
     vel_observation_error = np.linalg.norm(
         (observation_states - sim_states[sim_times_observed])[:, 3:], axis=1
     )
-    vel_std = np.sqrt(np.trace(observed_covariances[:, 3:, 3:], axis1=1, axis2=2))
-    ax1.scatter(
-        observation_times, vel_observation_error, label="Empirical", marker="x", s=20
+    vel_std = np.sqrt(
+        np.trace(observed_covariances[:, 3:, 3:], axis1=1, axis2=2)
     )
-    ax1.scatter(observation_times, vel_std, label="Theoretical", marker="+", s=30)
+    ax1.scatter(
+        observation_times,
+        vel_observation_error,
+        label="Empirical",
+        marker="x",
+        s=20,
+    )
+    ax1.scatter(
+        observation_times, vel_std, label="Theoretical", marker="+", s=30
+    )
     ax1.set_xlabel("Time [s]")
     ax1.set_ylabel("Velocity error [m/s]")
     ax1.set_title("Velocity measurement error")
@@ -633,11 +685,19 @@ def plot_theoretical_empirical_observation_error(
     pos_observation_error = np.linalg.norm(
         (observation_states - sim_states[sim_times_observed])[:, :3], axis=1
     )
-    pos_std = np.sqrt(np.trace(observed_covariances[:, :3, :3], axis1=1, axis2=2))
-    ax2.scatter(
-        observation_times, pos_observation_error, label="Empirical", marker="x", s=20
+    pos_std = np.sqrt(
+        np.trace(observed_covariances[:, :3, :3], axis1=1, axis2=2)
     )
-    ax2.scatter(observation_times, pos_std, label="Theoretical", marker="+", s=30)
+    ax2.scatter(
+        observation_times,
+        pos_observation_error,
+        label="Empirical",
+        marker="x",
+        s=20,
+    )
+    ax2.scatter(
+        observation_times, pos_std, label="Theoretical", marker="+", s=30
+    )
     ax2.set_xlabel("Time [s]")
     ax2.set_ylabel("Position error [m]")
     ax2.set_title("Position measurement error")
@@ -672,7 +732,9 @@ def plot_heatmap(true_traj, estimated_traj, uncertainties):
     for i in range(len(lats - 1)):
         for j in range(len(lons - 1)):
             # dist between mean trajectory and grid point
-            dist = np.linalg.norm(mean_trajectory[:, :dim] - [lons[j], lats[i]], axis=1)
+            dist = np.linalg.norm(
+                mean_trajectory[:, :dim] - [lons[j], lats[i]], axis=1
+            )
             dist = dist[:, np.newaxis]  # Column vector
 
             # Compute PDF based on uncertainty matrix
