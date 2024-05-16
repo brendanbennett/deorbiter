@@ -523,7 +523,23 @@ def plot_heatmap(
     uncertainties,
     n_traj=100,
     time_step=10,
-):
+) -> tuple[list[np.ndarray], list[np.ndarray]]:
+    """Generates a heatmap of the impact location probability based on trajectory uncertainties at selected observations.
+    
+    Args:
+        sim_states (np.ndarray): The true trajectory data points.
+        sim_times (np.ndarray): Timestamps for each data point.
+        estimated_traj (np.ndarray): The estimated trajectory data points.
+        estimated_times (np.ndarray): Timestamps for each estimated data point.
+        observation_idxs_to_check (list): The indices of the observations to start simulations at.
+        observation_times (np.ndarray): Timestamps for each observation.
+        uncertainties (np.ndarray): Uncertainty matrices associated with each trajectory point.
+        n_traj (int): The number of trajectories to sample at each time. Defaults to 100.
+        time_step (int): The time step duration. Defaults to 10.
+        
+    Returns:
+        tuple[list[np.ndarray], list[np.ndarray]]: The crash sites and crash times for each observation.
+    """
     rollout_sim_config = generate_sim_config(
         "RK4",
         "coesa_atmos_fast",
@@ -531,6 +547,8 @@ def plot_heatmap(
         time_step=time_step,
     )
     rollout_sim = Simulator(rollout_sim_config)
+    all_crashes = []
+    all_crash_times = []
     for i in observation_idxs_to_check:
         fig, ax = plt.subplots()
         crash_sites = []
@@ -549,6 +567,10 @@ def plot_heatmap(
             crash_times.append(rollout_sim.times[-1])
 
         time_until_real_crash = sim_times[-1] - t
+        crash_sites = np.array(crash_sites)
+        crash_times = np.array(crash_times)
+        all_crashes.append(crash_sites)
+        all_crash_times.append(crash_times)
         scatter_on_map(
             crash_sites,
             crash_times,
@@ -574,6 +596,7 @@ def plot_heatmap(
         ax.get_figure().set_size_inches(10, 10)
         plt.legend()
         plt.show()
+    return all_crashes, all_crash_times
 
 
 def plot_error(
