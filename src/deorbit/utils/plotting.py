@@ -1,6 +1,7 @@
 """This module encapsulates various plotting methods for visualizing trajectories, errors, and other relevant data associated with the simulation and prediction of satellite trajectories.
 """
 
+import contextlib
 import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
@@ -11,13 +12,17 @@ from deorbit.utils.coords import (
     earth_rotation,
     earth_rotation_array,
 )
+from deorbit.simulator import Simulator, generate_sim_config
+from deorbit.utils.constants import EARTH_RADIUS
 from matplotlib.patches import Ellipse
 
 __all__ = [
     "plot_trajectories",
     "plot_height",
     "plot_crash_site",
-    "plot_crash_site_on_map" "plot_error",
+    "plot_crash_site_on_map",
+    "plot_error",
+    "plot_heatmap",
     "plot_position_error",
     "plot_velocity_error",
     "plot_absolute_error",
@@ -281,7 +286,67 @@ def _normalize_latlong(latlong):
     normalized_longitude = long % 360
     if normalized_longitude > 180:
         normalized_longitude -= 360  # Convert to [-180, 180] range
-    return np.array((normalized_latitude, normalized_longitude))
+
+    latlong = np.array((normalized_latitude, normalized_longitude))
+    latlong /= np.pi / 180
+    return latlong
+
+
+def scatter_on_map(
+    points,
+    times,
+    alpha,
+    color,
+    s,
+    marker,
+    label,
+    title=None,
+    ax=None,
+    show=False,
+    draw_lines=True,
+):
+    """
+    Plots a scatter plot of points on a 2D map.
+
+    Args:
+        points (np.ndarray): The points to plot.
+        times (np.ndarray): The timestamps for each point.
+        alpha (float): The transparency of the points.
+        color (str): The color of the points.
+        s (int): The size of the points.
+        marker (str): The marker style of the points.
+        label (str): The label for the points.
+        title (str): The title of the plot.
+        ax (matplotlib.axes.Axes, optional): The axes to plot on. Defaults to None.
+        show (bool): Whether to display the plot. Defaults to False.
+        draw_lines (bool): Whether to draw coastlines, parallels, and meridians. Defaults to True. Disable on subsequent plots if plotting multiple times on the same axes.
+    """
+    if ax is None:
+        fig, ax = plt.subplots()
+    m = Basemap(projection="cyl", lon_0=0, ax=ax)
+    if draw_lines:
+        m.drawcoastlines()
+        m.drawparallels(np.arange(-90.0, 91.0, 30.0), labels=[1, 0, 0, 0])
+        m.drawmeridians(np.arange(-180.0, 181.0, 60.0), labels=[0, 0, 0, 1])
+
+    latlong_coords = earth_rotation_array(points, times)[:, :2]
+    norm_latlong = np.array(
+        [_normalize_latlong(latlong) for latlong in latlong_coords]
+    )
+    m.scatter(
+        norm_latlong[:, 1],
+        norm_latlong[:, 0],
+        alpha=alpha,
+        color=color,
+        s=s,
+        marker=marker,
+        label=label,
+    )
+    if title is not None:
+        plt.title(title)
+    if show:
+        plt.show()
+        plt.close()
 
 
 def plot_trajectories_on_map(
@@ -292,12 +357,14 @@ def plot_trajectories_on_map(
     only_crash_sites: bool = False,
     uncertainties: np.ndarray | None = None,
     title="Crash Site",
+    legend: bool = True,
+    alpha: float = 1.0,
     ax: plt.Axes | None = None,
     show: bool = True,
 ):
     """
     Plots the final crash site on a 2D map, including the estaimated crash site if it is supplied
-    
+
     Args:
         true_traj (np.ndarray): The true trajectory data points.
         true_times (np.ndarray): Timestamps for each data point.
@@ -317,8 +384,7 @@ def plot_trajectories_on_map(
     crash_coords = true_traj[-1, :]
     dim = len(crash_coords)
 
-    if ax is None:
-        m = Basemap(projection="cyl", lon_0=0)
+    m = Basemap(projection="cyl", lon_0=0, ax=ax)
 
     # Draw coastlines, parallels, and meridians
     m.drawcoastlines()
@@ -367,7 +433,6 @@ def plot_trajectories_on_map(
 
     if dim == 3:
         latlong_coords = earth_rotation_array(true_traj, true_times)[:, :2]
-        latlong_coords /= np.pi / 180
 
         norm_latlong = np.array(
             [_normalize_latlong(latlong) for latlong in latlong_coords]
@@ -375,7 +440,9 @@ def plot_trajectories_on_map(
         crash_norm_lat, crash_norm_long = norm_latlong[-1]
 
         if not only_crash_sites:
-            m.plot(norm_latlong[:, 1], norm_latlong[:, 0], label="True Trajectory")
+            m.plot(
+                norm_latlong[:, 1], norm_latlong[:, 0], label="True Trajectory"
+            )
         # plot crash point
         m.scatter(
             crash_norm_long,
@@ -383,13 +450,13 @@ def plot_trajectories_on_map(
             marker="x",
             color="r",
             s=10,
+            alpha=alpha,
             label=f"True Crash: ({crash_norm_long:.2f}, {crash_norm_lat:.2f})",
         )
         if estimated_traj is not None:
             est_latlong_coords = earth_rotation_array(
                 estimated_traj, estimated_times
             )[:, :2]
-            est_latlong_coords /= np.pi / 180
 
             norm_est_latlong = np.array(
                 [_normalize_latlong(latlong) for latlong in est_latlong_coords]
@@ -408,6 +475,7 @@ def plot_trajectories_on_map(
                 crash_est_norm_lat,
                 marker="s",
                 s=10,
+                alpha=alpha,
                 label=f"Predicted crash: ({crash_est_norm_long:.2f}, {crash_est_norm_lat:.2f})",
             )
         if uncertainties is not None:
@@ -437,12 +505,98 @@ def plot_trajectories_on_map(
             # m.ax.add_patch(ellipse)
 
             # plt.errorbar(crash_est_norm_long, crash_est_norm_lat, xerr=long_std, yerr=lat_std)
-
-    plt.legend()
+    if legend:
+        plt.legend()
     plt.title(title)
     if show:
         plt.show()
         plt.close()
+
+
+def plot_heatmap(
+    sim_states,
+    sim_times,
+    estimated_traj,
+    estimated_times,
+    observation_idxs_to_check,
+    observation_times,
+    uncertainties,
+    n_traj=100,
+    time_step=10,
+) -> tuple[list[np.ndarray], list[np.ndarray]]:
+    """Generates a heatmap of the impact location probability based on trajectory uncertainties at selected observations.
+    
+    Args:
+        sim_states (np.ndarray): The true trajectory data points.
+        sim_times (np.ndarray): Timestamps for each data point.
+        estimated_traj (np.ndarray): The estimated trajectory data points.
+        estimated_times (np.ndarray): Timestamps for each estimated data point.
+        observation_idxs_to_check (list): The indices of the observations to start simulations at.
+        observation_times (np.ndarray): Timestamps for each observation.
+        uncertainties (np.ndarray): Uncertainty matrices associated with each trajectory point.
+        n_traj (int): The number of trajectories to sample at each time. Defaults to 100.
+        time_step (int): The time step duration. Defaults to 10.
+        
+    Returns:
+        tuple[list[np.ndarray], list[np.ndarray]]: The crash sites and crash times for each observation.
+    """
+    rollout_sim_config = generate_sim_config(
+        "RK4",
+        "coesa_atmos_fast",
+        initial_state=np.array((EARTH_RADIUS + 150000, 0, 0, 0, 0, 7820)),
+        time_step=time_step,
+    )
+    rollout_sim = Simulator(rollout_sim_config)
+    all_crashes = []
+    all_crash_times = []
+    for i in observation_idxs_to_check:
+        fig, ax = plt.subplots()
+        crash_sites = []
+        crash_times = []
+        t = observation_times[i]
+        est_idx = np.argmax(estimated_times >= t)
+        uncertainty_to_plot = uncertainties[est_idx]
+        samples = np.random.multivariate_normal(
+            estimated_traj[est_idx], uncertainty_to_plot, n_traj
+        )
+        for s in samples:
+            rollout_sim.set_initial_conditions(s, t)
+            with contextlib.redirect_stdout(None):
+                rollout_sim.run()
+            crash_sites.append(rollout_sim.states[-1][:3])
+            crash_times.append(rollout_sim.times[-1])
+
+        time_until_real_crash = sim_times[-1] - t
+        crash_sites = np.array(crash_sites)
+        crash_times = np.array(crash_times)
+        all_crashes.append(crash_sites)
+        all_crash_times.append(crash_times)
+        scatter_on_map(
+            crash_sites,
+            crash_times,
+            0.3,
+            "r",
+            20,
+            "x",
+            "Predicted Crash Sites",
+            title=f"Crash site heatmap after observation {time_until_real_crash:.0f} seconds before crash",
+            ax=ax,
+        )
+        scatter_on_map(
+            [sim_states[-1][:3]],
+            [sim_times[-1]],
+            1,
+            "b",
+            60,
+            "x",
+            "True Crash Site",
+            ax=ax,
+            draw_lines=False,
+        )
+        ax.get_figure().set_size_inches(10, 10)
+        plt.legend()
+        plt.show()
+    return all_crashes, all_crash_times
 
 
 def plot_error(
@@ -707,7 +861,7 @@ def plot_theoretical_empirical_observation_error(
     plt.show()
 
 
-def plot_heatmap(true_traj, estimated_traj, uncertainties):
+def _plot_heatmap_old(true_traj, estimated_traj, uncertainties):
     """
     Generates a heatmap of the impact location probability based on trajectory uncertainties.
 
