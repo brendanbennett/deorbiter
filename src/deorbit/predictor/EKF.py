@@ -216,6 +216,9 @@ class EKF:
     ) -> tuple[np.ndarray, np.ndarray]:
         """Computes the next state of the system using the Extended Kalman Filter.
 
+        .. note:: The measurement matrix and measurement noise matrix need to be the same dimensions in domain and range as the state vector.
+            This is a shortcoming of the current implementation.
+        
         :param state: The current state of the system
         :param time: The current time of the system
         :param Q: Process noise matrix with shape (2*dim, 2*dim)
@@ -224,7 +227,7 @@ class EKF:
         :param H: Measurement matrix. Required if observation is not None.
         :param R: Measurement noise matrix. Required if observation is not None.
         :param dt: Time step for the Kalman Filter simulation. If None, the simulator's default is used.
-        :return: Tuple of the next state of the system and the updated state covariance matrix
+        :return: Tuple of the next state of the system and the updated state covariance matrix.
         """
         if dt is not None:
             self.dt = dt
