@@ -30,6 +30,7 @@ measures against potential satellite debris impacts.
    observer
    plotting
    dataio
+   constants
 
 Indices and tables
 ==================
