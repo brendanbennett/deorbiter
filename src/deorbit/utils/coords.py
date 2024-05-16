@@ -86,14 +86,14 @@ def earth_rotation(
         long, r = latlong_from_cart(cart_vector, return_radius=True)
         long -= EARTH_ROTATIONAL_SPEED * time
         if return_radius:
-            return long, r
-        return long
+            return np.array([long, r])
+        return np.array([long])
     else:
         lat, long, r = latlong_from_cart(cart_vector, return_radius=True)
         long -= EARTH_ROTATIONAL_SPEED * time
         if return_radius:
-            return lat, long, r
-        return lat, long
+            return np.array([lat, long, r])
+        return np.array([lat, long])
 
 
 def earth_rotation_array(

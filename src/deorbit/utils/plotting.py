@@ -6,15 +6,14 @@ import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 import deorbit
 from mpl_toolkits.basemap import Basemap
-from deorbit.utils.coords import latlong_from_cart
+from deorbit.utils.coords import latlong_from_cart, earth_rotation
 from matplotlib.patches import Ellipse
 
 __all__ = [
     "plot_trajectories",
     "plot_height",
     "plot_crash_site",
-    "plot_crash_site_on_map"
-    "plot_error",
+    "plot_crash_site_on_map" "plot_error",
     "plot_position_error",
     "plot_velocity_error",
     "plot_absolute_error",
@@ -47,8 +46,8 @@ def plot_trajectories(
     if len(true_traj[0]) == 2:
         if ax is None:
             fig, ax = plt.subplots()
-        ax.plot(true_traj[:, 0], true_traj[:, 1], label="True Trajectory", alpha = 0.7)
-        ax.set_aspect('equal')
+        ax.plot(true_traj[:, 0], true_traj[:, 1], label="True Trajectory", alpha=0.7)
+        ax.set_aspect("equal")
         if observations is not None:
             ax.scatter(
                 observations[:, 0],
@@ -57,7 +56,7 @@ def plot_trajectories(
                 color="r",
                 label="Noisy Measurements",
                 alpha=0.7,
-                s = 10
+                s=10,
             )
         if estimated_traj is not None:
             ax.plot(
@@ -81,7 +80,11 @@ def plot_trajectories(
             fig = plt.figure()
             ax = fig.add_subplot(111, projection="3d")
         ax.plot(
-            true_traj[:, 0], true_traj[:, 1], true_traj[:, 2], label="True Trajectory", alpha = 0.7
+            true_traj[:, 0],
+            true_traj[:, 1],
+            true_traj[:, 2],
+            label="True Trajectory",
+            alpha=0.7,
         )
         if observations is not None:
             ax.scatter(
@@ -92,7 +95,7 @@ def plot_trajectories(
                 color="r",
                 label="Noisy Measurements",
                 s=10,
-                alpha=0.7
+                alpha=0.7,
             )
         if estimated_traj is not None:
             ax.plot(
@@ -106,8 +109,7 @@ def plot_trajectories(
         ax.set_xlabel("Position X")
         ax.set_ylabel("Position Y")
         ax.set_zlabel("Position Z")
-       # ax.set_aspect('equal')
-
+        # ax.set_aspect('equal')
 
         # plotting EARTH
         r = deorbit.constants.EARTH_RADIUS
@@ -133,7 +135,7 @@ def plot_height(
     estimated_traj=None,
     observations=None,
     observation_times=None,
-    estimated_times = None,
+    estimated_times=None,
     title="Height",
     ax=None,
     show=True,
@@ -159,7 +161,7 @@ def plot_height(
         (np.linalg.norm(true_traj, axis=1) - deorbit.constants.EARTH_RADIUS) / 1000,
         label="True Height",
         alpha=0.9,
-        color = 'darkblue'
+        color="darkblue",
     )
     if observations is not None:
         ax.scatter(
@@ -170,7 +172,7 @@ def plot_height(
             color="r",
             label="Noisy Measurements",
             alpha=0.7,
-            s=10
+            s=10,
         )
     if estimated_traj is not None:
         ax.plot(
@@ -179,8 +181,8 @@ def plot_height(
             / 1000,
             label="Estimated Trajectory",
             linestyle="--",
-            color='k',
-            lw=2
+            color="k",
+            lw=2,
         )
     ax.set_title(title)
     ax.set_xlabel("Time (min)")
@@ -242,14 +244,17 @@ def plot_crash_site(
         plt.show()
         plt.close()
 
+
 def plot_crash_site_on_map(
-    true_traj, 
+    true_traj,
+    true_crash_time=0.0,
     estimated_traj=None,
-    uncertainties = None,
-    title = 'Crash Site',
+    estimated_crash_time=0.0,
+    uncertainties=None,
+    title="Crash Site",
     ax=None,
-    show=True
-    ):
+    show=True,
+):
     """
     Plots the final crash site on a 2D map, including the estaimated crash site if it is supplied
 
@@ -261,126 +266,133 @@ def plot_crash_site_on_map(
     """
     crash_coords = true_traj[-1, :]
     dim = len(crash_coords)
-        
+
     if ax is None:
         m = Basemap(projection="cyl", lon_0=0)
 
     # Draw coastlines, parallels, and meridians
     m.drawcoastlines()
     m.drawparallels(np.arange(-90.0, 91.0, 30.0), labels=[1, 0, 0, 0])
-    m.drawmeridians(np.arange(-180.0, 181.0, 60.0), labels=[0, 0, 0, 1])    
+    m.drawmeridians(np.arange(-180.0, 181.0, 60.0), labels=[0, 0, 0, 1])
 
-    if dim ==2:
-        long_crash_coords = (latlong_from_cart(crash_coords)/(np.pi/180))
+    if dim == 2:
+        long_crash_coords = latlong_from_cart(crash_coords) / (np.pi / 180)
 
         # normalize longitude coordinate
-        normalized_long = long_crash_coords % 360 
+        normalized_long = long_crash_coords % 360
         if normalized_long > 180:
             normalized_long -= 360  # Convert to [-180, 180] range
 
         # Plot crash point
         m.scatter(
-            normalized_long, 
-            0, 
-            marker='x', 
-            color='r', 
-            s=10, 
-            label = f'True crash: ({normalized_long:.2f}, 0)'
-            )
+            normalized_long,
+            0,
+            marker="x",
+            color="r",
+            s=10,
+            label=f"True crash: ({normalized_long:.2f}, 0)",
+        )
         if estimated_traj is not None:
             estimated_crash_coords = estimated_traj[-1, :2]
-            estimated_crash_long = (latlong_from_cart(estimated_crash_coords)/(np.pi/180)) 
+            estimated_crash_long = latlong_from_cart(estimated_crash_coords) / (
+                np.pi / 180
+            )
 
             # normalize longitude coordinate
-            normalized_est_longitude = estimated_crash_long % 360 
+            normalized_est_longitude = estimated_crash_long % 360
             if normalized_est_longitude > 180:
                 normalized_est_longitude -= 360  # Convert to [-180, 180] range
 
             m.scatter(
-                normalized_est_longitude, 
-                0, 
-                marker = 's', 
-                s=10, 
-                label = f'Predicted crash: ({normalized_est_longitude:.2f}, 0)'
-                )
-        
+                normalized_est_longitude,
+                0,
+                marker="s",
+                s=10,
+                label=f"Predicted crash: ({normalized_est_longitude:.2f}, 0)",
+            )
+
         if uncertainties is not None:
             uncertainty = uncertainties[-150]
             variance = np.array([uncertainty[0][0], uncertainty[1][1]])
-            long_variance = (latlong_from_cart(variance)/(np.pi/180)) 
-            long_std = long_variance ** 0.5
+            long_variance = latlong_from_cart(variance) / (np.pi / 180)
+            long_std = long_variance**0.5
 
-            plt.errorbar(
-                normalized_est_longitude, 0, xerr=long_std
-            )
+            plt.errorbar(normalized_est_longitude, 0, xerr=long_std)
 
-
-    if dim ==3:
-        latlong_crash_coords = (latlong_from_cart(crash_coords)/(np.pi/180))
+    if dim == 3:
+        latlong_crash_coords = earth_rotation(crash_coords, true_crash_time)
+        latlong_crash_coords /= np.pi / 180
 
         # normalize latitude coordinate
-        normalized_latitude = latlong_crash_coords[1] % 180
+        normalized_latitude = latlong_crash_coords[0] % 180
         if normalized_latitude > 90:
             normalized_latitude -= 180  # Convert to [-90, 90] range
 
         # normalize longitude coordinate
-        normalized_longitude = latlong_crash_coords[0] % 360 
+        normalized_longitude = latlong_crash_coords[1] % 360
         if normalized_longitude > 180:
             normalized_longitude -= 360  # Convert to [-180, 180] range
 
         # plot crash point
-        m.scatter(normalized_longitude, 
-               normalized_latitude, 
-               marker='x', color='r', 
-               s=10, 
-               label = f'True Crash: ({normalized_longitude:.2f}, {normalized_latitude:.2f})'
-               )
+        m.scatter(
+            normalized_longitude,
+            normalized_latitude,
+            marker="x",
+            color="r",
+            s=10,
+            label=f"True Crash: ({normalized_longitude:.2f}, {normalized_latitude:.2f})",
+        )
         if estimated_traj is not None:
             estimated_crash_coords = estimated_traj[-1, :3]
-            estimated_crash_longlat = (latlong_from_cart(estimated_crash_coords)/(np.pi/180))
+            estimated_crash_latlong = earth_rotation(
+                estimated_crash_coords, estimated_crash_time
+            )
+            estimated_crash_latlong /= np.pi / 180
 
             # normalize latitude coordinate
-            est_norm_lat = estimated_crash_longlat[1] % 180
+            est_norm_lat = estimated_crash_latlong[0] % 180
             if est_norm_lat > 90:
                 est_norm_lat -= 180  # Convert to [-90, 90] range
 
             # normalize longitude coordinate
-            est_norm_long = estimated_crash_longlat[0] % 360 
+            est_norm_long = estimated_crash_latlong[1] % 360
             if est_norm_long > 180:
                 est_norm_long -= 360  # Convert to [-180, 180] range
-            
+
             m.scatter(
-                est_norm_long, 
-                est_norm_lat, 
-                marker = 's', 
-                s=10, 
-                label = f'Predicted crash: ({est_norm_long:.2f}, {est_norm_lat:.2f})'
-                )
+                est_norm_long,
+                est_norm_lat,
+                marker="s",
+                s=10,
+                label=f"Predicted crash: ({est_norm_long:.2f}, {est_norm_lat:.2f})",
+            )
         if uncertainties is not None:
             uncertainty = uncertainties[-130]
-            variance = np.array([uncertainty[0][0], uncertainty[1][1], uncertainty[2][2]])
-            std = variance**0.5 
+            variance = np.array(
+                [uncertainty[0][0], uncertainty[1][1], uncertainty[2][2]]
+            )
+            std = variance**0.5
 
-            #puts it through the transform which is wrong
-            latlong_std = (latlong_from_cart(std)/(np.pi/180)) 
+            # puts it through the transform which is wrong
+            latlong_std = latlong_from_cart(std) / (np.pi / 180)
             long_std = latlong_std[0]
             lat_std = latlong_std[1]
-            #print(long_std)
-            #print(lat_std)
+            # print(long_std)
+            # print(lat_std)
 
-            #baso percentage uncertainties, also wrong
-            estimated_crash_longlat_std = estimated_crash_longlat * np.linalg.norm(std/estimated_crash_coords)
-            #print(estimated_crash_longlat_std)
+            # baso percentage uncertainties, also wrong
+            estimated_crash_longlat_std = estimated_crash_latlong * np.linalg.norm(
+                std / estimated_crash_coords
+            )
+            # print(estimated_crash_longlat_std)
 
-            #cant get this too work
+            # cant get this too work
             # major_axis = 2 *long_std
             # minor_axis = 2*lat_std
             # ellipse = Ellipse(xy=(est_norm_long, est_norm_lat), width=major_axis, height=minor_axis, angle=0)
             # m.ax.add_patch(ellipse)
 
-            plt.errorbar(
-               est_norm_long, est_norm_lat, xerr=long_std, yerr = lat_std 
-            )
+            plt.errorbar(est_norm_long, est_norm_lat, xerr=long_std, yerr=lat_std)
 
     plt.legend()
     plt.title(title)
@@ -605,7 +617,9 @@ def plot_theoretical_empirical_observation_error(
         (observation_states - sim_states[sim_times_observed])[:, 3:], axis=1
     )
     vel_std = np.sqrt(np.trace(observed_covariances[:, 3:, 3:], axis1=1, axis2=2))
-    ax1.scatter(observation_times, vel_observation_error, label="Empirical", marker="x", s=20)
+    ax1.scatter(
+        observation_times, vel_observation_error, label="Empirical", marker="x", s=20
+    )
     ax1.scatter(observation_times, vel_std, label="Theoretical", marker="+", s=30)
     ax1.set_xlabel("Time [s]")
     ax1.set_ylabel("Velocity error [m/s]")
@@ -616,7 +630,9 @@ def plot_theoretical_empirical_observation_error(
         (observation_states - sim_states[sim_times_observed])[:, :3], axis=1
     )
     pos_std = np.sqrt(np.trace(observed_covariances[:, :3, :3], axis1=1, axis2=2))
-    ax2.scatter(observation_times, pos_observation_error, label="Empirical", marker="x", s=20)
+    ax2.scatter(
+        observation_times, pos_observation_error, label="Empirical", marker="x", s=20
+    )
     ax2.scatter(observation_times, pos_std, label="Theoretical", marker="+", s=30)
     ax2.set_xlabel("Time [s]")
     ax2.set_ylabel("Position error [m]")
@@ -688,8 +704,11 @@ def plot_heatmap(true_traj, estimated_traj, uncertainties):
         print("Length of lats:", len(lats)),
         print("Length of lons:", len(lons)),
     )  # Debugging
-    
-def slice_by_time(arr, times, start_time=None, end_time=None) -> tuple[np.ndarray, np.ndarray]:
+
+
+def slice_by_time(
+    arr, times, start_time=None, end_time=None
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Slices an array by time.
 
@@ -703,7 +722,7 @@ def slice_by_time(arr, times, start_time=None, end_time=None) -> tuple[np.ndarra
     """
     if arr is None:
         return None
-    
+
     arr = np.array(arr)
     times = np.array(times)
     start_index = None
