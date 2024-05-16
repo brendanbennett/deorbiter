@@ -15,6 +15,10 @@ CONFIG_FMT = "pkl"
 
 
 class DataIO(ABC):
+    """
+    Abstract base class for data input/output operations.
+    """
+
     name: None | str = None
 
     def __init__(self):
@@ -22,33 +26,59 @@ class DataIO(ABC):
             raise ValueError("DataIO subclasses must define a name attribute")
 
     @abstractmethod
-    def save(self, data: BaseModel, path) -> None: ...
+    def save(self, data: BaseModel, path: Path | str) -> None: 
+        """
+        Save data to the specified path.
+
+        :param data: The data to save.
+        :param path: The path to save the data to.
+        """
+        ...
 
     @abstractmethod
-    def load(self, path, data_model: type[BaseModel]) -> BaseModel: ...
+    def load(self, path: Path | str, data_model: type[BaseModel]) -> BaseModel: 
+        """
+        Load data from the specified path.
+
+        :param path: The path to load the data from.
+        :param data_model: The model class to validate the loaded data against.
+        :return: The loaded data.
+        """
+        ...
 
 
 class JSONIO(DataIO):
+    """
+    JSON data input/output operations.
+    """
     name = "json"
 
     def save(self, data: BaseModel, path) -> None:
+        """:meta private:"""
         with open(path, "w") as f:
             json.dump(data.model_dump_json(), f)
 
     def load(self, path, data_model: type[BaseModel]) -> BaseModel:
+        """:meta private:"""
         with open(path) as f:
             model = data_model.model_validate_json(json.load(f))
             return model
 
 
 class PickleIO(DataIO):
+    """
+    Pickle data input/output operations.
+    """
+
     name = "pkl"
 
     def save(self, data: BaseModel, path) -> None:
+        """:meta private:"""
         with open(path, "wb") as f:
             pickle.dump(data, f)
 
     def load(self, path) -> BaseModel:
+        """:meta private:"""
         with open(path, "rb") as f:
             model = pickle.load(f)
             return model
@@ -119,7 +149,7 @@ def save_sim_data_and_config(
     Args:
         data (SimData): Data to be saved
         save_path (str): Directory where the `data` and `config` files will be saved.
-        format (str): Data file format to use. Default: `pkl`
+        format (str): Data file format to use. Default: `pkl`. Options: `json`, `pkl`.
 
     Raises:
         NotADirectoryError: Raised if `save_path` exists and is not a valid directory.

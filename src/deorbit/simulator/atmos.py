@@ -5,6 +5,7 @@ from typing import Callable
 
 import matplotlib.pyplot as plt
 import numpy as np
+import numpy.typing as npt
 from ambiance import Atmosphere as _IcaoAtmosphere
 
 from deorbit.data_models.atmos import (
@@ -15,16 +16,27 @@ from deorbit.data_models.atmos import (
     SimpleAtmosKwargs,
     ZeroAtmosKwargs,
 )
-from deorbit.utils.constants import AIR_DENSITY_SEA_LEVEL, EARTH_RADIUS, EARTH_ROTATIONAL_SPEED
+from deorbit.utils.constants import (
+    AIR_DENSITY_SEA_LEVEL,
+    EARTH_RADIUS,
+    EARTH_ROTATIONAL_SPEED,
+)
 
 
 class AtmosphereModel(ABC):
     """Abstract base class for Atmosphere model implementations.
-    Attributes:
-        kwargs (AtmosKwargs): A pydantic data model of model parameters
-
-    Methods:
-        density(state, time) -> float: abstract; must be implemented in any subclass
+    
+    .. note:: The canonical way of initializing an AtmosphereModel is by using the function :func:`deorbit.data_models.get_model_for_atmos` to obtain the correct kwargs model for the desired atmosphere model, and then passing the kwargs model to the AtmosphereModel constructor.
+        For example:
+        
+        .. code-block:: python
+        
+            from from deorbit.simulator.atmos import AtmosphereModel
+            from deorbit.data_models.atmos import get_model_for_atmos
+            atmos = AtmosphereModel(get_model_for_atmos("coesa_atmos_fast"))
+    
+    :param kwargs: The parameter values for the atmosphere model.
+    :type kwargs: AtmosKwargs
     """
 
     _models = {}
@@ -50,17 +62,21 @@ class AtmosphereModel(ABC):
         self.kwargs: AtmosKwargs = None
 
     @abstractmethod
-    def density(self, state: np.ndarray, time: float) -> float: ...
-    
+    def density(self, state: np.ndarray, time: float) -> float:
+        """Calculate the density of the atmosphere at a given state (and time)
+        
+        :param state: The state array of the object in the atmosphere
+        :param time: The time at which the density is calculated. This is currently not used in any model.
+        :return: The density of the atmosphere at the given state and time
+        """
+        ...
+
     def velocity(self, state: np.ndarray, time: float) -> np.ndarray:
         """Calculate the velocity of the atmosphere as a result of the Earth's rotation at a given state (and time)
 
-        Args:
-            state (np.ndarray): The state of the object in the atmosphere
-            time (float): The time at which the velocity is calculated
-
-        Returns:
-            np.ndarray: The velocity of the atmosphere at the given state and time
+        :param state: The state array of the object in the atmosphere
+        :param time: The time at which the velocity is calculated. This is currently not used in any model.
+        :return: The velocity of the atmosphere at the given state and time
         """
         dim = int(len(state) / 2)
         position = state[:dim]
@@ -69,15 +85,20 @@ class AtmosphereModel(ABC):
             rot_radius = pos_norm
             vel_direction = AtmosphereModel._rot_2d_ccw @ position / pos_norm
         if dim == 3:
-            rot_radius = np.sqrt(np.sum(position ** 2) + state[2] ** 2)
+            rot_radius = np.sqrt(np.sum(position ** 2) - state[2] ** 2)
             vel_direction = np.array([*(AtmosphereModel._rot_2d_ccw @ position[:2] / (np.linalg.norm(position[:2]))), 0])
         speed = EARTH_ROTATIONAL_SPEED * rot_radius
         return speed * vel_direction
 
+    @abstractmethod
     def derivative(self, state: np.ndarray, time: float) -> float:
-        raise NotImplementedError(
-            "Derivative not implemented for this atmosphere model"
-        )
+        """Calculate the derivative of the density of the atmosphere at a given state (and time) with respect to height
+        
+        :param state: The state array of the object in the atmosphere
+        :param time: The time at which the derivative is calculated. This is currently not used in any model.
+        :return: The derivative of the density of the atmosphere at the given state and time with respect to height
+        """
+        ...
 
     def plot(
         self,
@@ -105,37 +126,41 @@ class AtmosphereModel(ABC):
 
 
 class ZeroAtmos(AtmosphereModel, model_name="zero_atmos"):
-    """Generate zero atmospheric model
-
-    Methods:
-        density(state: np.ndarray, time: float) -> float: Density function taking state and time as input
-        model_kwargs() -> dict: Returns model parameters
-    """
+    """Identically zero atmosphere model"""
 
     def __init__(self, kwargs: ZeroAtmosKwargs) -> None:
         self.kwargs: ZeroAtmosKwargs = kwargs
 
+    def derivative(self, state: np.ndarray, time: float) -> float:
+        """:meta private:"""
+        raise NotImplementedError(
+            f"Derivative not implemented for {self.__class__.__name__}"
+        )
+
     def density(self, state: np.ndarray, time: float) -> float:
+        """Identically zero density function
+        
+        :param state: Unused
+        :param time: Unused
+        :return: 0
+        """
         return 0
 
 
 class SimpleAtmos(AtmosphereModel, model_name="simple_atmos"):
     """Generate simple atmospheric model
-
-    Methods:
-        density(state: np.ndarray, time: float) -> float: Density function taking state and time as input
-        model_kwargs() -> dict: Returns model parameters
     """
 
     def __init__(self, kwargs: SimpleAtmosKwargs) -> None:
-        """
-        Args:
-            earth_radius (float, optional): Earth's radius in metres. Defaults to EARTH_RADIUS.
-            surf_density (float, optional): Air density at Earth's surface in kgm^-3. Defaults to AIR_DENSITY_SEA_LEVEL.
-        """
         # Document the keywords used in the atmosphere model. This is required.
         self.kwargs: SimpleAtmosKwargs = kwargs
 
+    def derivative(self, state: np.ndarray, time: float) -> float:
+        """:meta private:"""
+        raise NotImplementedError(
+            f"Derivative not implemented for {self.__class__.__name__}"
+        )
+        
     ## This function can be changed.
     def density(self, state: np.ndarray, time: float) -> float:
         dim = int(len(state) / 2)
@@ -150,6 +175,12 @@ class IcaoAtmos(AtmosphereModel, model_name="icao_standard_atmos"):
         self.kwargs: IcaoKwargs = kwargs
         self._max_height = 81020
         self._density_at_max_height = _IcaoAtmosphere(self._max_height).density
+        
+    def derivative(self, state: np.ndarray, time: float) -> float:
+        """:meta private:"""
+        raise NotImplementedError(
+            f"Derivative not implemented for {self.__class__.__name__}"
+        )
 
     def density(self, state: np.ndarray, time: float) -> float:
         dim = int(len(state) / 2)
@@ -164,6 +195,11 @@ class IcaoAtmos(AtmosphereModel, model_name="icao_standard_atmos"):
 
 
 class CoesaAtmos(AtmosphereModel, model_name="coesa_atmos"):
+    """Uses the COESA76 model to calculate atmospheric density. The most accurate model. This uses lazy importing of the coesa76 model from :mod:`pyatmos`.
+    
+    :param kwargs: The keyword arguments required by the COESA76 model.
+    :type kwargs: CoesaKwargs
+    """
     def __init__(self, kwargs: CoesaKwargs):
         # Lazy import of coesa76
         if "_coesa76" not in dir():
@@ -173,8 +209,29 @@ class CoesaAtmos(AtmosphereModel, model_name="coesa_atmos"):
                 from pyatmos import coesa76 as _coesa76
 
         self.kwargs: CoesaKwargs = kwargs
+    
+    def derivative(self, state: np.ndarray, time: float) -> float:
+        """:meta private:"""
+        """
+        Raises NotImplementedError indicating that the derivative method is not implemented for this model.
+        :raises NotImplementedError: Always raised to indicate this method is not implemented.
+        """
+        
+        raise NotImplementedError(
+            f"Derivative not implemented for {self.__class__.__name__}"
+        )
 
     def density(self, state: np.ndarray, time: float) -> float:
+        """
+        Calculate the atmospheric density using the COESA76 model based on the current state.
+
+        :param state: The current state vector of the system.
+        :type state: np.ndarray
+        :param time: The current time of the system.
+        :type time: float
+        :return: The atmospheric density at the given state.
+        :rtype: float
+        """
         dim = int(len(state) / 2)
         position = state[:dim]
 
@@ -184,9 +241,20 @@ class CoesaAtmos(AtmosphereModel, model_name="coesa_atmos"):
 
 
 class CoesaAtmosFast(AtmosphereModel, model_name="coesa_atmos_fast"):
-    """Uses a lookup table of atmosphere densities"""
+    """
+    Uses a lookup table of COESA76 atmosphere densities to calculate quicker. Marginally less accurate than CoesaAtmos.
+
+    :param kwargs: The keyword arguments required by the COESA76 fast model.
+    :type kwargs: CoesaFastKwargs
+    """
 
     def __init__(self, kwargs: CoesaFastKwargs):
+        """
+        Initialize the CoesaAtmosFast model.
+
+        :param kwargs: The keyword arguments required by the COESA76 fast model.
+        :type kwargs: CoesaFastKwargs
+        """
         self.kwargs: CoesaFastKwargs = kwargs
         assert (
             self.kwargs.precision >= 0
@@ -219,6 +287,17 @@ class CoesaAtmosFast(AtmosphereModel, model_name="coesa_atmos_fast"):
         self._derivatives = dict(zip(sample_heights, sampled_derivatives))
 
     def density(self, state: np.ndarray, time: float) -> float:
+        """
+        Calculate the atmospheric density using a lookup table of COESA76 densities.
+
+        :param state: The current state vector of the system.
+        :type state: np.ndarray
+        :param time: The current time of the system.
+        :type time: float
+        :return: The atmospheric density at the given state.
+        :rtype: float
+        :raises Exception: If the height is not supported by the COESA76-fast atmosphere model.
+        """
         dim = int(len(state) / 2)
         position = state[:dim]
 
@@ -240,6 +319,17 @@ class CoesaAtmosFast(AtmosphereModel, model_name="coesa_atmos_fast"):
         return rho
 
     def derivative(self, state: np.ndarray, time: float) -> float:
+        """
+        Calculate the derivative of the atmospheric density with respect to height using a lookup table.
+
+        :param state: The current state vector of the system.
+        :type state: np.ndarray
+        :param time: The current time of the system.
+        :type time: float
+        :return: The derivative of the atmospheric density at the given state.
+        :rtype: float
+        :raises Exception: If the height is not supported by the COESA76-fast atmosphere model.
+        """
         # TODO: Fix this: has a bump
         dim = int(len(state) / 2)
         position = state[:dim]
@@ -262,7 +352,11 @@ class CoesaAtmosFast(AtmosphereModel, model_name="coesa_atmos_fast"):
 
 
 def raise_for_invalid_atmos_model(atmos_model: str) -> None:
-    """Raises ValueError if the given simulation method name is not defined"""
+    """Raises ValueError if the given simulation method name is not defined
+    
+    :param atmos_model: The name of the atmosphere model
+    :raises ValueError: If the atmosphere model is not supported
+    """
     available_models = list(get_available_atmos_models().keys())
     if atmos_model not in available_models:
         raise ValueError(
@@ -273,8 +367,7 @@ def raise_for_invalid_atmos_model(atmos_model: str) -> None:
 def get_available_atmos_models() -> dict[str, type[AtmosphereModel]]:
     """Find available atmosphere models in atmos.py
 
-    Returns:
-        dict[str, type[AtmosphereModel]]: Dictionary of {model name: subclass of AtmosphereModel}
+    :return: A dictionary of available atmosphere models
     """
     return AtmosphereModel._models
 

@@ -34,7 +34,6 @@ class SimData(BaseModel):
     def state_array(self):
         if self.x3 is None:
             return np.array([self.x1, self.x2, self.v1, self.v2]).T
-        return np.array([self.x1, self.x2, self.x3, self.v1, self.v2, self.v3]).T
-
-
-# Jacobian: list[np.ndarray]
+        return np.array(
+            [self.x1, self.x2, self.x3, self.v1, self.v2, self.v3]
+        ).T

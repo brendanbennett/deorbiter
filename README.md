@@ -202,3 +202,20 @@ To plot a close plot where the final crash is is outputd on a 2D map:
 ```
 plot_crash_site_on_map(true_traj, estimated_traj=estimated_traj):
 ```
+
+## Examples
+
+For mroe detailed usage examples see [examples/](examples)
+
+## API documentation
+
+To build the documentation, you must first have installed the package's dev dependencies with
+
+```
+python -m pip install mir-satellite-deorbiter[dev]@git+https://github.com/ES98B-Mir-project-23/mir-orbiter.git@main
+```
+
+The following will build the documentation in [docs/build](docs/build/):
+
+```
+sphinx-build -M html docs/source/ docs/build/

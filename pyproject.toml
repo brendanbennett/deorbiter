@@ -24,6 +24,7 @@ dependencies = [
     "pydantic",
     "scipy",
     "tqdm",
+    "basemap",
 ]
 
 [tool.setuptools.dynamic]
@@ -31,4 +32,11 @@ readme = { file = ["README.md"], content-type = "text/markdown" }
 version = { attr = "deorbit.__version__" }
 
 [project.optional-dependencies]
-dev = ["pytest", "isort"]
+dev = [
+    "pytest",
+    "isort",
+    "sphinx",
+    "sphinx-rtd-theme",
+    "black",
+    "sphinx-autodoc-typehints",
+]
