@@ -14,36 +14,14 @@ class Observer:
     :keyword rotation: Sets the speed in rad/s of the Earth's rotation. Default EARTH_ROTATIONAL_SPEED.
     :keyword number_of_radars: Determines how many radar stations are used in the simulation. Default 1.
     :keyword positions_of_radars: Optional numpy array containing [latitude, longitude] for each satellite, otherwise default equally spaced positions set.
-    :keyword radar_noise_factor: Simulates the uncertainty in the measurement. The variance increases linearly as distance to satellite increases. Default 0.1.
+    :keyword radar_position_std_per_distance: Sets the standard deviation of the radar position noise per distance. Default 0.005.
+    :keyword radar_velocity_std_per_distance: Sets the standard deviation of the radar velocity noise per distance. Default 0.000001.
+    :keyword radar_velocity_std_per_speed: Sets the standard deviation of the radar velocity noise per speed. Default 0.0005.
     :ivar observed_states: After the Observer has been run, observed states are stored here to be used in the Predictor.
     :ivar observed_times: After the Observer has been run, observed times are stored here to be used in the Predictor.
     :ivar observed_covariances: The noise covariance associated with each state measurement made by the radar stations.
     """
     def __init__(self, **kwargs):
-        """
-        ATTRIBUTES:
-        :::Earth Model Configuration:::
-        self.radius: Sets the distance of the Earth's radius
-        self.rotation: Sets the speed in rad/s of the Earth's rotation
-
-        :::Radar Stations Configuration:::
-        self.number_of_radars: Determines how many radar stations are used in the simulation, default 1
-        self.positions_of_radars: Optional numpy array containing [latitude, longitude] for each satellite, otherwise default positions set
-        self.radar_variance_per_m: Simulates the uncertainty in the measurement. The variance increases linearly as distance to satellite increases. Default 0.1
-
-        :::Observer Output:::
-        self.observed_states: After the Observer has been run, observed states are stored here to be used in the Predictor
-        self.observed_times: After the Observer has been run, observed times are stored here to be used in the Predictor
-        self.observed_covariances: The noise covariance associated with each state measurement made by the radar stations
-
-        METHODS:
-        self.plot_config(): Shows a 3D plot of the radar station configuration
-
-        self.run(sim_times, sim_states, checking_interval):
-        ->sim_states: the states of the satellite given by the Simulator
-        ->sim_times: the time steps of each state given by the Simulator
-        ->checking_interval: Radars check for line of sight at regular time intervals equal to (checking_interval * simulator interval) seconds.
-        """
         self.dim: float = kwargs.get("dim", 2)
         self.radius: float = kwargs.get("radius", EARTH_RADIUS)
         self.rotation: float = kwargs.get("rotation", EARTH_ROTATIONAL_SPEED)
@@ -52,7 +30,11 @@ class Observer:
             "positions_of_radars",
             self._default_radar_positions(self.number_of_radars, self.dim),
         )
-        self.radar_variance_per_m: float = kwargs.get("radar_noise_factor", 0.1)
+        # Observation distances are about 50-500km.
+        self.radar_position_std_per_distance: float = kwargs.get("radar_position_std_per_distance", 0.005)
+        # Want distance to only play a small role, in order to make velocity error more relative
+        self.radar_velocity_std_per_distance: float = kwargs.get("radar_velocity_std_per_distance", 0.000001)
+        self.radar_velocity_std_per_speed: float = kwargs.get("radar_velocity_std_per_speed", 0.0005)
         self.observed_states: list[list[float]] | None = None
         self.observed_times: list[float] | None = None
         self.observed_covariances: np.ndarray = None
@@ -71,9 +53,15 @@ class Observer:
         """
         if dim == 3:
             rad_default_positions = np.zeros(shape=(number_of_radars, 2))
-            rad_default_positions[:, 1] = np.linspace(
-                0, 2 * np.pi, number_of_radars, endpoint=False
-            )
+
+            #transform to get uniform coverage of earth
+            indices = np.arange(0, number_of_radars, dtype = float) + 0.5
+
+            random_theta_sample = np.arcsin(1-2*indices/number_of_radars)
+            random_phi_sample = np.pi*(1 + 5**0.5)*indices
+
+            rad_default_positions = np.stack((random_theta_sample, random_phi_sample), axis=1)
+
         elif dim == 2:
             rad_default_positions = np.linspace(
                 0, 2 * np.pi, number_of_radars, endpoint=False
@@ -108,11 +96,14 @@ class Observer:
         distance = np.linalg.norm(
             sat_state[0 : self.dim] - cart_from_latlong(rad_latlong)
         )
-        variance = distance * self.radar_variance_per_m
+        speed = np.linalg.norm(sat_state[self.dim :])
+        pos_std = distance * self.radar_position_std_per_distance
+        vel_std = distance * self.radar_velocity_std_per_distance + speed * self.radar_velocity_std_per_speed
 
-        cov = np.eye(self.dim * 2) * variance
+        cov = np.eye(self.dim * 2)
+        cov[:self.dim, :self.dim] *= pos_std ** 2
+        cov[self.dim:, self.dim:] *= vel_std ** 2
         noisy_state = np.random.multivariate_normal(sat_state, cov)
-
         return noisy_state, cov
 
     def _check_los(self, latlong, state):
@@ -171,8 +162,15 @@ class Observer:
 
             ax.plot_surface(x, y, z, color="g", alpha=0.5)
 
+            # Calculate distance of each radar station from the viewer
+            distances = np.linalg.norm(self.positions_of_radars, axis=1)
+
+            # Normalize distances to range [0, 1]
+            normalized_distances = (distances - np.min(distances)) / (np.max(distances) - np.min(distances))
+
             for i, xi in enumerate(self.positions_of_radars):
                 x_radar, y_radar, z_radar = cart_from_latlong(xi)
+                # alpha = 1 - normalized_distances[i]  # Adjust alpha based on normalized distance
                 ax.scatter(
                     x_radar,
                     y_radar,
@@ -181,6 +179,7 @@ class Observer:
                     marker="o",
                     s=50,
                     edgecolors="black",
+                    # alpha = alpha
                 )
 
             ax.set_xlabel("X")

@@ -38,6 +38,13 @@ class Simulator(ABC):
     _available_noise_types = ["gaussian", "impulse"]
 
     def __init_subclass__(cls, method_name: str = None, **kwargs):
+        """
+        Special method called when a subclass is defined. Registers the subclass with a method name.
+
+        :param method_name: The name of the simulation method.
+        :type method_name: str
+        :raises SyntaxError: If 'method_name' is not provided when defining a subclass.
+        """
         # This special method is called when a _subclass_ is defined in the code.
         # This allows the `method_name` to be passed as an argument to the subclass instantiator
         if method_name is None:
@@ -51,14 +58,11 @@ class Simulator(ABC):
         """
         Create a new instance of the simulator using the specified configuration.
 
-        Args:
-            config (SimConfig): The configuration object for the simulator.
-
-        Returns:
-            object: An instance of the simulator matching the simulation method defined in config.
-
-        Raises:
-            ValueError: If the specified simulation method is invalid.
+        :param config: The configuration object for the simulator.
+        :type config: SimConfig
+        :return: An instance of the simulator matching the simulation method defined in config.
+        :rtype: object
+        :raises ValueError: If the specified simulation method is invalid.
         """
         method_name = config.simulation_method_kwargs.method_name
         raise_for_invalid_sim_method(method_name)
@@ -100,6 +104,9 @@ class Simulator(ABC):
         return config
 
     def _reset_state_and_time(self) -> None:
+        """
+        Resets the internal state and time lists.
+        """
         self.states = list()
         self.times = list()
 
@@ -124,15 +131,32 @@ class Simulator(ABC):
         """Sets the atmosphere model for the simulation.
 
         :param model_kwargs: The configuration for the atmosphere model.
+        :type model_kwargs: AtmosKwargs
         """
         model_name = model_kwargs.atmos_name
         raise_for_invalid_atmos_model(model_name)
         self._atmosphere_model: AtmosphereModel = AtmosphereModel(model_kwargs)
 
     def _pos_from_state(self, state: np.ndarray) -> np.ndarray:
+        """
+        Extracts the position vector from the state vector.
+
+        :param state: The state vector.
+        :type state: np.ndarray
+        :return: The position vector.
+        :rtype: np.ndarray
+        """
         return state[: self.dim]
 
     def _vel_from_state(self, state: np.ndarray) -> np.ndarray:
+        """
+        Extracts the velocity vector from the state vector.
+
+        :param state: The state vector.
+        :type state: np.ndarray
+        :return: The velocity vector.
+        :rtype: np.ndarray
+        """
         return state[self.dim :]
 
     def atmosphere(self, state: np.ndarray, time: float) -> float:
@@ -206,7 +230,7 @@ class Simulator(ABC):
             # gaussian noise accounting for random changes throughout the deorbit process
             noise_kwargs: GaussianNoiseKwargs = self.noise_types["gaussian"]
             noise_accel += np.linalg.norm(drag_accel + grav_accel) * np.random.normal(
-                0, noise_kwargs.noise_strength, size=2
+                0, noise_kwargs.noise_strength, size=self.dim
             )
 
         if "impulse" in self.noise_types:
@@ -216,8 +240,8 @@ class Simulator(ABC):
             collision_chance = np.random.random()
             if collision_chance < noise_kwargs.impulse_probability:
                 # Impulse in a random direction
-                direction = np.random.uniform(0, 2 * np.pi)
-                direction = np.array([np.cos(direction), np.sin(direction)])
+                direction = np.random.normal(size = self.dim)
+                direction = direction/np.linalg.norm(direction)
                 noise_accel += direction * noise_kwargs.impulse_strength
         return drag_accel + grav_accel + noise_accel
 
@@ -348,7 +372,21 @@ class Simulator(ABC):
 
 
 class EulerSimulator(Simulator, method_name="euler"):
+    """
+    Simulator class implementing the Euler integration method.
+    """
+
     def _next_state(self, state, time) -> np.ndarray:
+        """
+        Calculate the next state using the Euler method.
+
+        :param state: The current state vector.
+        :type state: np.ndarray
+        :param time: The current simulation time.
+        :type time: float
+        :return: The next state vector.
+        :rtype: np.ndarray
+        """
         # Calculate the next state using the Euler method
         dt = self.time_step
         next_state = state + self._objective_function(state, time) * dt
@@ -356,13 +394,28 @@ class EulerSimulator(Simulator, method_name="euler"):
         return next_state
 
     def _step_state(self) -> None:
+        """
+        Step the state of the simulation by one time step using the Euler method.
+        """
         self._step_time()
         # Saving the new state
         self.states.append(self._next_state(self.states[-1], self.times[-1]))
 
     def _run_method(self, steps: int | None) -> None:
-        """Simple forward euler integration technique"""
-        print(f"Running simulation with Euler integrator with {self.noise_types} noise")
+        """
+        Simple forward euler integration technique. Run the simulation using the Euler integration method.
+
+        :param steps: The number of steps to run the simulation for. If None, runs until the satellite impacts the Earth.
+        :type steps: int or None
+        """
+        if len(self.noise_types) == 0:
+            print(
+                f"Running simulation with Euler integrator without noise"
+            )
+        else:
+            print(
+                f"Running simulation with Euler integrator with {self.noise_types} noise"
+            )
         # Boilerplate code for stepping the simulation
         if steps is None:
             iters = 0
@@ -382,7 +435,14 @@ class EulerSimulator(Simulator, method_name="euler"):
 
 
 class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
+    """
+    Simulator class implementing the two-step Adams-Bashforth integration method.
+    """
+    
     def _step_state_euler(self) -> None:
+        """
+        Step the state of the simulation by one time step using the Euler method for initialization.
+        """
         self._step_time()
         next_state = np.array(self.states[-1], dtype=float)
         next_state += (
@@ -391,6 +451,12 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
         self.states.append(next_state)
 
     def _step_state(self, buffer: list) -> None:
+        """
+        Step the state of the simulation by one time step using the Adams-Bashforth method.
+
+        :param buffer: A list containing the previous function evaluations.
+        :type buffer: list
+        """
         func_n_minus_2, func_n_minus_1 = buffer
         # Update with two step Adams-Bashforth
         next_state = (
@@ -405,12 +471,17 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
         self.states.append(next_state)
 
     def _run_method(self, steps: int | None) -> None:
-        """Two-step Adams-Bashforth integration technique.
+        """
+        Two-step Adams-Bashforth integration technique.
 
         A linear multistep method that only samples the function at the same time steps as are output.
         This contrasts with the Runge-Kutta methods which take intermediatesamples between time steps.
         This allows buffering of previous calls to the right-hand-side function of the ODE which is
-        fairly expensive."""
+        fairly expensive.
+        
+        :param steps: The number of steps to run the simulation for. If None, runs until the satellite impacts the Earth.
+        :type steps: int or None
+        """
         if len(self.noise_types) == 0:
             print(
                 f"Running simulation with Two-step Adams-Bashforth integrator without noise"
@@ -452,7 +523,21 @@ class AdamsBashforthSimulator(Simulator, method_name="adams_bashforth"):
 
 
 class RK4Simulator(Simulator, method_name="RK4"):
+    """
+    Simulator class implementing the 4th order Runge-Kutta (RK4) integration method.
+    """
+
     def _next_state(self, state, time) -> np.ndarray:
+        """
+        Calculate the next state using the 4th order Runge-Kutta (RK4) method.
+
+        :param state: The current state vector.
+        :type state: np.ndarray
+        :param time: The current simulation time.
+        :type time: float
+        :return: The next state vector.
+        :rtype: np.ndarray
+        """
         next_state = np.array(state)
         k1 = self._objective_function(state, time)
         k2 = self._objective_function(
@@ -471,12 +556,27 @@ class RK4Simulator(Simulator, method_name="RK4"):
         return next_state
 
     def _step_state(self) -> None:
+        """
+        Step the state of the simulation by one time step using the RK4 method.
+        """
         self._step_time()
         self.states.append(self._next_state(self.states[-1], self.times[-1]))
 
     def _run_method(self, steps: int | None) -> None:
-        """4th order Runge Kutta Numerical Integration Method"""
-        print("Running simulation with RK4 integrator")
+        """
+        4th order Runge Kutta Numerical Integration Method
+
+        :param steps: The number of steps to run the simulation for. If None, runs until the satellite impacts the Earth.
+        :type steps: int or None
+        """
+        if len(self.noise_types) == 0:
+            print(
+                f"Running simulation with RK4 integrator without noise"
+            )
+        else:
+            print(
+                f"Running simulation with RK4 integrator with {self.noise_types} noise"
+            )
         iters = 0
         # Boilerplate code for stepping the simulation
         if steps is None:
@@ -496,7 +596,9 @@ class RK4Simulator(Simulator, method_name="RK4"):
         print(f"Ran {iters} iterations at time step of {self.time_step} seconds")
 
 
-def raise_for_invalid_sim_method(sim_method: str) -> None:
+def raise_for_invalid_sim_method(
+        sim_method: str
+) -> None:
     """Raises ValueError if the given simulation method name is not defined
     :meta private:
     """
@@ -532,6 +634,15 @@ def get_available_sim_methods() -> dict[str, type[Simulator]]:
     :return: A dictionary of simulation method names and their corresponding classes.
     """
     return Simulator._methods
+
+# def get_available_noise_types() -> list[str, type[Simulator]]:
+#     """Python magic to find the names of implemented noise methods.
+
+#     Returns:
+#         list[str, subclass(Simulator)]: a list of `{name: noise class}`
+#     """
+#     return Simulator._available_noise_types
+
 
 
 def generate_sim_config(

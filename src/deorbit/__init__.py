@@ -6,3 +6,5 @@ import deorbit.predictor as predictor
 import deorbit.observer as observer
 import deorbit.utils.constants as constants
 import deorbit.utils.dataio as dataio
+import deorbit.utils.coords as coords
+import deorbit.utils.plotting as plotting

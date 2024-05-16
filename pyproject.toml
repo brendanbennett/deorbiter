@@ -24,6 +24,7 @@ dependencies = [
     "pydantic",
     "scipy",
     "tqdm",
+    "basemap",
 ]
 
 [tool.setuptools.dynamic]
