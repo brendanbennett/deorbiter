@@ -198,7 +198,7 @@ To plot a close plot of the impact location:
 ```
 plot_crash_site(true_traj, observations=observation_states, estimated_traj=estimated_traj)
 ```
-To plot a close plot where the final observed states were measured:
+To plot a close plot where the final crash is is outputd on a 2D map:
 ```
-plot_from_last_measurements(true_traj, observations=observation_states, estimated_traj=estimated_traj, observation_times=observation_times, no_measurements = 3)
+plot_crash_site_on_map(true_traj, estimated_traj=estimated_traj):
 ```
