@@ -5,7 +5,7 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas, NavigationToolbar2QT as NavigationToolbar
 
 from worker import WorkerThread
-from utils import plot_trajectories, plot_height, plot_crash_site, slice_by_time, plot_trajectories_on_map
+from deorbit.utils.plotting import plot_trajectories, plot_height, plot_crash_site, slice_by_time, plot_trajectories_on_map, plot_theoretical_empirical_observation_error
 
 class SatelliteSimulatorGUI(QMainWindow):
     def __init__(self):
@@ -31,6 +31,8 @@ class SatelliteSimulatorGUI(QMainWindow):
         main_layout.addLayout(right_panel)
 
         self.plot_layout = QGridLayout()
+        self.plot_layout.setContentsMargins(0, 0, 0, 0)
+        self.plot_layout.setSpacing(0)
         right_panel.addLayout(self.plot_layout)
 
     def setup_options(self, layout):
@@ -48,7 +50,7 @@ class SatelliteSimulatorGUI(QMainWindow):
         layout.addWidget(self.dim_combo)
 
         self.atmos_model_combo = QComboBox()
-        self.atmos_model_combo.addItems(['zero_atmos', 'simple_atmos', 'icao_standard_atmos', 'coesa_atmos', 'coesa_atmos_fast'])
+        self.atmos_model_combo.addItems(['coesa_atmos_fast', 'zero_atmos', 'simple_atmos', 'icao_standard_atmos', 'coesa_atmos'])
         self.atmos_model_combo.setToolTip("Select the atmospheric model.")
         layout.addWidget(QLabel("Atmosphere Model:"))
         layout.addWidget(self.atmos_model_combo)
@@ -114,6 +116,13 @@ class SatelliteSimulatorGUI(QMainWindow):
         centered_layout_last.addStretch()
         layout.addLayout(centered_layout_last)
 
+        self.plot_error_button = QPushButton('Plot Errors (3D)')
+        self.plot_error_button.clicked.connect(self.plot_errors)
+        self.plot_error_button.setEnabled(False)
+        self.plot_error_button.setFixedHeight(30)
+        self.plot_error_button.setFixedWidth(300)
+        centered_layout_last.addWidget(self.plot_error_button)
+
         self.output_text = QTextEdit()
         self.output_text.setReadOnly(True)
         layout.addWidget(self.output_text)
@@ -139,10 +148,7 @@ class SatelliteSimulatorGUI(QMainWindow):
         predictor_method = self.method_combo.currentText()
         dim = 2 if self.dim_combo.currentText() == '2D' else 3
 
-        save_path = "eg/EKF_example_noise_2s/" if dim == 2 else "eg/EKF_example_3D/"
-
-        self.thread = WorkerThread(save_path, 
-                                    predictor_method, 
+        self.thread = WorkerThread(predictor_method, 
                                     atmos_model,
                                     dim,
                                     number_of_radars, 
@@ -151,6 +157,7 @@ class SatelliteSimulatorGUI(QMainWindow):
         self.thread.update_signal.connect(self.update_output)
         self.thread.plot_first_two_signal.connect(self.receive_first_two)
         self.thread.plot_last_two_signal.connect(self.receive_last_two)
+        self.thread.plot_error_signal.connect(self.receive_error_data)
         self.thread.error_signal.connect(self.display_error)
         self.thread.start()
 
@@ -173,25 +180,41 @@ class SatelliteSimulatorGUI(QMainWindow):
             if widget_to_remove is not None:
                 widget_to_remove.setParent(None)
 
-    def receive_first_two(self, true_traj, observed_traj, estimated_traj, uncertainties, observation_times, estimated_times, sim_times):
+    def receive_first_two(self, true_traj, sim_states, observation_states, estimated_traj, uncertainties, observation_times, estimated_times, sim_times, observed_covariances):
         self.true_traj = true_traj
-        self.observed_traj = observed_traj
+        self.sim_states = sim_states
+        self.observation_states = observation_states
         self.estimated_traj = estimated_traj
         self.uncertainties = uncertainties
         self.observation_times = observation_times
         self.estimated_times = estimated_times
         self.sim_times = sim_times
+        self.observed_covariances = observed_covariances
         self.plot_first_two_button.setEnabled(True)
 
-    def receive_last_two(self, true_traj, observed_traj, estimated_traj, uncertainties, observation_times, estimated_times, sim_times):
+
+    def receive_last_two(self, true_traj, sim_states, observation_states, estimated_traj, uncertainties, observation_times, estimated_times, sim_times, observed_covariances):
         self.true_traj = true_traj
-        self.observed_traj = observed_traj
+        self.sim_states = sim_states
+        self.observation_states = observation_states
         self.estimated_traj = estimated_traj
         self.uncertainties = uncertainties
         self.observation_times = observation_times
         self.estimated_times = estimated_times
         self.sim_times = sim_times
+        self.observed_covariances = observed_covariances
         self.plot_last_two_button.setEnabled(True)
+   
+
+    def receive_error_data(self, sim_states, sim_times, observation_states, observation_times, observed_covariances):
+        self.sim_states = sim_states
+        self.sim_times = sim_times
+        self.observation_states = observation_states
+        self.observation_times = observation_times
+        self.observed_covariances = observed_covariances
+
+        if self.dim_combo.currentText() == '3D':
+            self.plot_error_button.setEnabled(True)
 
     def plot_first_two(self):
         try:
@@ -202,7 +225,7 @@ class SatelliteSimulatorGUI(QMainWindow):
             toolbar1 = NavigationToolbar(canvas1, self)
             ax1 = fig1.add_subplot(111, projection='3d' if self.true_traj.shape[1] == 3 else 'rectilinear')
             plot_trajectories(self.true_traj, 
-                              observations=self.observed_traj, 
+                              observations=self.observation_states, 
                               estimated_traj=self.estimated_traj, 
                               ax=ax1)
             self.plot_layout.addWidget(toolbar1, 0, 0)
@@ -213,7 +236,7 @@ class SatelliteSimulatorGUI(QMainWindow):
             toolbar2 = NavigationToolbar(canvas2, self)
             ax2 = fig2.add_subplot(111)
             plot_height(self.true_traj, 
-                        observations=self.observed_traj, 
+                        observations=self.observation_states, 
                         estimated_traj=self.estimated_traj, 
                         observation_times=self.observation_times, 
                         estimated_times=self.estimated_times, 
@@ -229,7 +252,6 @@ class SatelliteSimulatorGUI(QMainWindow):
             self.clear_plots()
 
             if self.true_traj.shape[1] == 3:
-                # 3D plotting
                 fig = Figure()
                 canvas = FigureCanvas(fig)
                 toolbar = NavigationToolbar(canvas, self)
@@ -246,7 +268,6 @@ class SatelliteSimulatorGUI(QMainWindow):
                 self.plot_layout.addWidget(toolbar, 0, 0)
                 self.plot_layout.addWidget(canvas, 1, 0)
             else:
-                # 2D plotting
                 fig3 = Figure()
                 canvas3 = FigureCanvas(fig3)
                 toolbar3 = NavigationToolbar(canvas3, self)
@@ -256,10 +277,15 @@ class SatelliteSimulatorGUI(QMainWindow):
                 end_time = start_time + 1000
 
                 true_traj_sliced, _ = slice_by_time(self.true_traj, self.sim_times, start_time, end_time)
-                observation_states_sliced, _ = slice_by_time(self.observed_traj, self.observation_times, start_time, end_time)
+                observation_states_sliced, _ = slice_by_time(self.observation_states, self.observation_times, start_time, end_time)
                 estimated_traj_sliced, _ = slice_by_time(self.estimated_traj, self.estimated_times, start_time, end_time)
 
-                plot_trajectories(true_traj_sliced, observations=observation_states_sliced, estimated_traj=estimated_traj_sliced, ax=ax3, show=False, tight=True)
+                plot_trajectories(true_traj_sliced, 
+                                  observations=observation_states_sliced, 
+                                  estimated_traj=estimated_traj_sliced, 
+                                  ax=ax3, 
+                                  show=False, 
+                                  tight=True)
 
                 self.plot_layout.addWidget(toolbar3, 0, 0)
                 self.plot_layout.addWidget(canvas3, 1, 0)
@@ -269,9 +295,41 @@ class SatelliteSimulatorGUI(QMainWindow):
                 toolbar4 = NavigationToolbar(canvas4, self)
 
                 ax4 = fig4.add_subplot(111)
-                plot_crash_site(self.true_traj, self.estimated_traj, self.observed_traj, ax=ax4, show=False)
+                plot_crash_site(self.true_traj, 
+                                self.estimated_traj, 
+                                self.observation_states, 
+                                ax=ax4, 
+                                show=False)
 
                 self.plot_layout.addWidget(toolbar4, 0, 1)
                 self.plot_layout.addWidget(canvas4, 1, 1)
         except Exception as e:
             self.display_error(str(e))
+
+    def plot_errors(self):
+        if self.dim_combo.currentText() == '3D':
+            try:
+                self.clear_plots()
+                fig = Figure()
+                canvas = FigureCanvas(fig)
+                toolbar = NavigationToolbar(canvas, self)
+                ax1 = fig.add_subplot(211)
+                ax2 = fig.add_subplot(212)
+
+                plot_theoretical_empirical_observation_error(
+                    self.sim_states,
+                    self.sim_times,
+                    self.observation_states,
+                    self.observation_times,
+                    self.observed_covariances,
+                    ax1=ax1,
+                    ax2=ax2,
+                    show=False
+                )
+
+                self.plot_layout.addWidget(toolbar, 0, 0)
+                self.plot_layout.addWidget(canvas, 1, 0)
+            except Exception as e:
+                self.display_error(str(e))
+        else:
+            self.display_error('This plot is only available for 3D simulations.')
