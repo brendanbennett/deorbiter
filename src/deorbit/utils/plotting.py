@@ -523,6 +523,7 @@ def plot_heatmap(
     uncertainties,
     n_traj=100,
     time_step=10,
+    plot_mean=False,
 ) -> tuple[list[np.ndarray], list[np.ndarray]]:
     """Generates a heatmap of the impact location probability based on trajectory uncertainties at selected observations.
     
@@ -565,7 +566,14 @@ def plot_heatmap(
                 rollout_sim.run()
             crash_sites.append(rollout_sim.states[-1][:3])
             crash_times.append(rollout_sim.times[-1])
-
+            
+        # Calculate mean crash site
+        rollout_sim.set_initial_conditions(estimated_traj[est_idx], t)
+        with contextlib.redirect_stdout(None):
+            rollout_sim.run()
+        mean_crash_site = rollout_sim.states[-1][:3]
+        mean_crash_time = rollout_sim.times[-1]
+        
         time_until_real_crash = sim_times[-1] - t
         crash_sites = np.array(crash_sites)
         crash_times = np.array(crash_times)
@@ -593,9 +601,23 @@ def plot_heatmap(
             ax=ax,
             draw_lines=False,
         )
+        if plot_mean:
+            scatter_on_map(
+                [mean_crash_site],
+                [mean_crash_time],
+                1,
+                "g",
+                60,
+                "x",
+                "Mean Crash Site",
+                ax=ax,
+                draw_lines=False,
+            )
         ax.get_figure().set_size_inches(10, 10)
         plt.legend()
         plt.show()
+    if plot_mean:
+        return all_crashes, all_crash_times, mean_crash_site, mean_crash_time
     return all_crashes, all_crash_times
 
 
