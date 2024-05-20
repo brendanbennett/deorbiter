@@ -125,7 +125,6 @@ def plot_trajectories(
         ax.set_xlabel("Position X")
         ax.set_ylabel("Position Y")
         ax.set_zlabel("Position Z")
-        # ax.set_aspect('equal')
 
         # plotting EARTH
         r = deorbit.constants.EARTH_RADIUS
@@ -800,6 +799,9 @@ def plot_theoretical_empirical_observation_error(
     observation_states,
     observation_times,
     observed_covariances,
+    ax1=None,
+    ax2=None,
+    show=True
 ) -> None:
     """
     Plots both theoretical and empirical observation errors for position and velocity.
@@ -810,8 +812,13 @@ def plot_theoretical_empirical_observation_error(
         observation_states (np.ndarray): Observed states.
         observation_times (np.ndarray): Timestamps for observed states.
         observed_covariances (np.ndarray): Covariance matrices for the observations.
+        ax1 (matplotlib.axes.Axes): Axes for the velocity error plot.
+        ax2 (matplotlib.axes.Axes): Axes for the position error plot.
     """
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 8))
+    # Ensure axes are provided or create them if needed
+    if ax1 is None or ax2 is None:
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 8))
+
     sim_times_observed = np.array(
         [i for i, t in enumerate(sim_times) if t in observation_times]
     )
@@ -829,7 +836,10 @@ def plot_theoretical_empirical_observation_error(
         s=20,
     )
     ax1.scatter(
-        observation_times, vel_std, label="Theoretical", marker="+", s=30
+        observation_times, 
+        vel_std, 
+        label="Theoretical", 
+        marker="+", s=30
     )
     ax1.set_xlabel("Time [s]")
     ax1.set_ylabel("Velocity error [m/s]")
@@ -850,15 +860,18 @@ def plot_theoretical_empirical_observation_error(
         s=20,
     )
     ax2.scatter(
-        observation_times, pos_std, label="Theoretical", marker="+", s=30
+        observation_times, 
+        pos_std, 
+        label="Theoretical", 
+        marker="+", s=30
     )
     ax2.set_xlabel("Time [s]")
     ax2.set_ylabel("Position error [m]")
     ax2.set_title("Position measurement error")
     ax2.legend()
 
-    fig.set_constrained_layout(True)
-    plt.show()
+    if show:
+        plt.show()
 
 
 def _plot_heatmap_old(true_traj, estimated_traj, uncertainties):
