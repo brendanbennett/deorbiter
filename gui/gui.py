@@ -87,8 +87,8 @@ class SatelliteSimulatorGUI(QMainWindow):
 
 
     def setup_controls(self, layout):
-        # Row 1: Start Simulation and Clear Output buttons
         row1_layout = QHBoxLayout()
+
         self.start_button = QPushButton('Start Simulation')
         self.start_button.clicked.connect(self.start_simulation)
         self.start_button.setFixedHeight(30)
@@ -101,7 +101,6 @@ class SatelliteSimulatorGUI(QMainWindow):
         
         layout.addLayout(row1_layout)
 
-        # Row 2: Trajectory and Height, Slice and Crash Site buttons
         row2_layout = QHBoxLayout()
         self.plot_first_two_button = QPushButton('Trajectory and Height')
         self.plot_first_two_button.clicked.connect(self.plot_first_two)
@@ -117,9 +116,8 @@ class SatelliteSimulatorGUI(QMainWindow):
         
         layout.addLayout(row2_layout)
 
-        # Row 3: Plot Errors and Heatmaps buttons
         row3_layout = QHBoxLayout()
-        self.plot_error_button = QPushButton('Plot Errors (3D)')
+        self.plot_error_button = QPushButton('Plot Errors')
         self.plot_error_button.clicked.connect(self.plot_errors)
         self.plot_error_button.setEnabled(False)
         self.plot_error_button.setFixedHeight(30)
@@ -133,7 +131,6 @@ class SatelliteSimulatorGUI(QMainWindow):
         
         layout.addLayout(row3_layout)
 
-        # Text output and display labels
         self.output_text = QTextEdit()
         self.output_text.setReadOnly(True)
         layout.addWidget(self.output_text)
@@ -393,16 +390,14 @@ class SatelliteSimulatorGUI(QMainWindow):
     def plot_heatmap(self):
         if self.dim_combo.currentText() == '3D':
             try:
-                self.clear_plots()  # Clear any existing plots
+                self.clear_plots()  
 
-                # Create a figure and canvas for the heatmap
                 fig = Figure()
                 canvas = FigureCanvas(fig)
                 toolbar = NavigationToolbar(canvas, self)
                 self.plot_layout.addWidget(toolbar, 0, 0)
                 self.plot_layout.addWidget(canvas, 1, 0)
 
-                # Obtain the crash sites and times
                 crashes, crash_times, mean_crash, mean_crash_time = plot_heatmap_gui(
                     self.sim_states,
                     self.sim_times,
@@ -414,7 +409,6 @@ class SatelliteSimulatorGUI(QMainWindow):
                     plot_mean=True
                 )
 
-                # Plotting within the UI
                 ax = fig.add_subplot(111)
                 scatter_on_map(
                     crashes[0],  
@@ -426,7 +420,7 @@ class SatelliteSimulatorGUI(QMainWindow):
                     "Predicted Crash Sites",
                     title="Crash site heatmap",
                     ax=ax,
-                    show=False,  # Do not show here
+                    show=False,  
                     draw_lines=True
                 )
 
@@ -439,7 +433,7 @@ class SatelliteSimulatorGUI(QMainWindow):
                     "x",
                     "True Crash Site",
                     ax=ax,
-                    show=False,  # Do not show here
+                    show=False, 
                     draw_lines=False
                 )
 
@@ -452,14 +446,13 @@ class SatelliteSimulatorGUI(QMainWindow):
                     "x",
                     "Mean Crash Site",
                     ax=ax,
-                    show=False,  # Do not show here
+                    show=False,  
                     draw_lines=False
                 )
 
                 ax.legend()
-                canvas.draw()  # Explicitly draw the canvas to update the plot
+                canvas.draw() 
 
-                # Display the total standard deviation and final error
                 total_std = np.mean(np.std(crashes[0], axis=0))
                 final_error = np.linalg.norm(mean_crash - self.sim_states[-1, :3])
                 self.output_text.append(f"Total standard deviation: {total_std}")
