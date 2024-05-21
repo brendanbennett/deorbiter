@@ -5,7 +5,7 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas, NavigationToolbar2QT as NavigationToolbar
 
 from worker import WorkerThread
-from deorbit.utils.plotting import plot_trajectories, plot_height, plot_crash_site, slice_by_time, plot_trajectories_on_map, plot_theoretical_empirical_observation_error
+from deorbit.utils.plotting import plot_trajectories, plot_heatmap_gui, scatter_on_map, plot_height, plot_crash_site, slice_by_time, plot_trajectories_on_map, plot_theoretical_empirical_observation_error
 
 class SatelliteSimulatorGUI(QMainWindow):
     def __init__(self):
@@ -56,7 +56,7 @@ class SatelliteSimulatorGUI(QMainWindow):
         layout.addWidget(self.atmos_model_combo)
 
         self.method_combo = QComboBox()
-        self.method_combo.addItems(['RK4', 'euler', 'adams_bashforth'])
+        self.method_combo.addItems(['RK4', 'Euler', 'Adams-Bashforth'])
         self.method_combo.setToolTip("Select the numerical integration method.")
         layout.addWidget(QLabel("Method:"))
         layout.addWidget(self.method_combo)
@@ -67,62 +67,73 @@ class SatelliteSimulatorGUI(QMainWindow):
         layout.addWidget(QLabel("Number of Radars:"))
         layout.addWidget(self.number_of_radars_input)
 
-        self.radar_position_std_input = QLineEdit()
-        self.radar_position_std_input.setText("0.005")
-        self.radar_position_std_input.setToolTip("Enter the radar position std per distance.")
-        layout.addWidget(QLabel("Radar position std per distance:"))
-        layout.addWidget(self.radar_position_std_input)
+        self.radar_position_std_per_position = QLineEdit()
+        self.radar_position_std_per_position.setText("5e-3")
+        self.radar_position_std_per_position.setToolTip("Enter the radar position std per distance.")
+        layout.addWidget(QLabel("Radar position std per distance(sigma_r):"))
+        layout.addWidget(self.radar_position_std_per_position)
+
+        self.radar_velocity_std__per_speed = QLineEdit()
+        self.radar_velocity_std__per_speed.setText("5e-4")
+        self.radar_velocity_std__per_speed.setToolTip("Enter the radar velocity std per meter.")
+        layout.addWidget(QLabel("Radar velocity std per meter (sigma_vs):"))
+        layout.addWidget(self.radar_velocity_std__per_speed)
+
+        self.radar_velocity_std_per_distance = QLineEdit()
+        self.radar_velocity_std_per_distance.setText("1e-6")
+        self.radar_velocity_std_per_distance.setToolTip("Enter the radar velocity std per meter.")
+        layout.addWidget(QLabel("Radar velocity std per meter (simage_vd):"))
+        layout.addWidget(self.radar_velocity_std_per_distance)
+
 
     def setup_controls(self, layout):
-        button_layout = QHBoxLayout()
-
+        # Row 1: Start Simulation and Clear Output buttons
+        row1_layout = QHBoxLayout()
         self.start_button = QPushButton('Start Simulation')
         self.start_button.clicked.connect(self.start_simulation)
         self.start_button.setFixedHeight(30)
-        self.start_button.setFixedWidth(300)
-        button_layout.addWidget(self.start_button)
-        button_layout.addStretch()
+        row1_layout.addWidget(self.start_button, stretch=1)
 
         self.clear_button = QPushButton('Clear Output')
         self.clear_button.clicked.connect(self.clear_output)
         self.clear_button.setFixedHeight(30)
-        self.clear_button.setFixedWidth(300)
-        button_layout.addWidget(self.clear_button)
-        layout.addLayout(button_layout)
+        row1_layout.addWidget(self.clear_button, stretch=1)
+        
+        layout.addLayout(row1_layout)
 
-        centered_layout_first = QHBoxLayout()
-        centered_layout_first.addStretch()
-
+        # Row 2: Trajectory and Height, Slice and Crash Site buttons
+        row2_layout = QHBoxLayout()
         self.plot_first_two_button = QPushButton('Trajectory and Height')
         self.plot_first_two_button.clicked.connect(self.plot_first_two)
         self.plot_first_two_button.setEnabled(False)
         self.plot_first_two_button.setFixedHeight(30)
-        self.plot_first_two_button.setFixedWidth(300)
-        centered_layout_first.addWidget(self.plot_first_two_button)
+        row2_layout.addWidget(self.plot_first_two_button, stretch=1)
 
-        centered_layout_first.addStretch()
-        layout.addLayout(centered_layout_first)
-
-        centered_layout_last = QHBoxLayout()
-        centered_layout_last.addStretch()
-        
         self.plot_last_two_button = QPushButton('Slice and Crash Site')
         self.plot_last_two_button.clicked.connect(self.plot_last_two)
         self.plot_last_two_button.setEnabled(False)
         self.plot_last_two_button.setFixedHeight(30)
-        self.plot_last_two_button.setFixedWidth(300)
-        centered_layout_last.addWidget(self.plot_last_two_button)
+        row2_layout.addWidget(self.plot_last_two_button, stretch=1)
+        
+        layout.addLayout(row2_layout)
 
-        centered_layout_last.addStretch()
-        layout.addLayout(centered_layout_last)
-
+        # Row 3: Plot Errors and Heatmaps buttons
+        row3_layout = QHBoxLayout()
         self.plot_error_button = QPushButton('Plot Errors (3D)')
         self.plot_error_button.clicked.connect(self.plot_errors)
         self.plot_error_button.setEnabled(False)
         self.plot_error_button.setFixedHeight(30)
-        self.plot_error_button.setFixedWidth(300)
-        centered_layout_last.addWidget(self.plot_error_button)
+        row3_layout.addWidget(self.plot_error_button, stretch=1)
 
+        self.plot_heatmap_button = QPushButton('Heatmaps')
+        self.plot_heatmap_button.clicked.connect(self.plot_heatmap)
+        self.plot_heatmap_button.setEnabled(False)
+        self.plot_heatmap_button.setFixedHeight(30)
+        row3_layout.addWidget(self.plot_heatmap_button, stretch=1)
+        
+        layout.addLayout(row3_layout)
+
+        # Text output and display labels
         self.output_text = QTextEdit()
         self.output_text.setReadOnly(True)
         layout.addWidget(self.output_text)
@@ -132,14 +143,22 @@ class SatelliteSimulatorGUI(QMainWindow):
         self.error_display = QLabel()
         layout.addWidget(self.error_display)
 
+
     def start_simulation(self):
         try:
             number_of_radars = int(self.number_of_radars_input.text())
-            radar_position_std_per_distance = float(self.radar_position_std_input.text())
+            radar_position_std_per_distance = float(self.radar_position_std_per_position.text())
+            radar_velocity_std_per_speed = float(self.radar_velocity_std__per_speed.text())
+            radar_velocity_std_per_distance = float(self.radar_velocity_std_per_distance.text())
+
             if number_of_radars <= 0:
                 raise ValueError("Number of radars must be greater than 0.")
             if radar_position_std_per_distance <= 0:
-                raise ValueError("Radar variance per meter must be greater than 0.")
+                raise ValueError("Radar standard deviation of radar position per meter must be greater than 0.")
+            if radar_velocity_std_per_speed <=0:
+                raise ValueError("Radar standard deviation of radar velocity per speed must be greater than 0.")
+            if radar_velocity_std_per_distance <=0:
+                raise ValueError("Radar standard deviation of radar velocity per meter must be greater than 0.")
         except ValueError as e:
             self.display_error(f" {str(e)}")
             return
@@ -152,12 +171,16 @@ class SatelliteSimulatorGUI(QMainWindow):
                                     atmos_model,
                                     dim,
                                     number_of_radars, 
-                                    radar_position_std_per_distance)
+                                    radar_position_std_per_distance,
+                                    radar_velocity_std_per_speed,
+                                    radar_velocity_std_per_distance
+                                    )
         
         self.thread.update_signal.connect(self.update_output)
         self.thread.plot_first_two_signal.connect(self.receive_first_two)
         self.thread.plot_last_two_signal.connect(self.receive_last_two)
         self.thread.plot_error_signal.connect(self.receive_error_data)
+        self.thread.plot_heatmap_signal.connect(self.receive_heatmap_data)
         self.thread.error_signal.connect(self.display_error)
         self.thread.start()
 
@@ -204,7 +227,6 @@ class SatelliteSimulatorGUI(QMainWindow):
         self.sim_times = sim_times
         self.observed_covariances = observed_covariances
         self.plot_last_two_button.setEnabled(True)
-   
 
     def receive_error_data(self, sim_states, sim_times, observation_states, observation_times, observed_covariances):
         self.sim_states = sim_states
@@ -212,9 +234,19 @@ class SatelliteSimulatorGUI(QMainWindow):
         self.observation_states = observation_states
         self.observation_times = observation_times
         self.observed_covariances = observed_covariances
+        # if self.dim_combo.currentText() == '3D':
+        self.plot_error_button.setEnabled(True)
 
+    def receive_heatmap_data(self, sim_states, sim_times, estimated_traj, estimated_times, observation_to_check, observation_times, uncertainties):
+        self.sim_states = sim_states
+        self.sim_times = sim_times
+        self.estimated_traj = estimated_traj 
+        self.estimated_times = estimated_times 
+        self.observation_to_check = observation_to_check
+        self.observation_times = observation_times 
+        self.uncertainties = uncertainties
         if self.dim_combo.currentText() == '3D':
-            self.plot_error_button.setEnabled(True)
+            self.plot_heatmap_button.setEnabled(True)
 
     def plot_first_two(self):
         try:
@@ -326,9 +358,113 @@ class SatelliteSimulatorGUI(QMainWindow):
                     ax2=ax2,
                     show=False
                 )
-
+                fig.tight_layout()
                 self.plot_layout.addWidget(toolbar, 0, 0)
                 self.plot_layout.addWidget(canvas, 1, 0)
+            except Exception as e:
+                self.display_error(str(e))
+        elif self.dim_combo.currentText() == '2D':
+            try:
+                self.clear_plots()
+                fig = Figure(figsize=(9, 6))
+                canvas = FigureCanvas(fig)
+                toolbar = NavigationToolbar(canvas, self)
+
+                total_std = np.sqrt(np.trace(self.uncertainties, axis1=1, axis2=2))
+
+                ax1, ax2 = fig.subplots(2, 1)
+                ax1.semilogy(self.estimated_times, total_std)
+                ax2.semilogy(self.estimated_times[:-400], total_std[:-400])
+
+                ax1.set_title("Total standard deviation of state estimates")
+                ax2.set_xlabel("Time (s)")
+                ax1.set_ylabel("Total standard deviation")
+                ax2.set_ylabel("Total standard deviation")
+
+                fig.tight_layout()
+                self.plot_layout.addWidget(toolbar, 0, 0)
+                self.plot_layout.addWidget(canvas, 1, 0)
+                canvas.draw()
+            except Exception as e:
+                self.display_error(str(e))
+        else:
+            self.display_error('This plot is only available for 3D simulations.')
+
+    def plot_heatmap(self):
+        if self.dim_combo.currentText() == '3D':
+            try:
+                self.clear_plots()  # Clear any existing plots
+
+                # Create a figure and canvas for the heatmap
+                fig = Figure()
+                canvas = FigureCanvas(fig)
+                toolbar = NavigationToolbar(canvas, self)
+                self.plot_layout.addWidget(toolbar, 0, 0)
+                self.plot_layout.addWidget(canvas, 1, 0)
+
+                # Obtain the crash sites and times
+                crashes, crash_times, mean_crash, mean_crash_time = plot_heatmap_gui(
+                    self.sim_states,
+                    self.sim_times,
+                    self.estimated_traj,
+                    self.estimated_times,
+                    self.observation_to_check,
+                    self.observation_times,
+                    self.uncertainties,
+                    plot_mean=True
+                )
+
+                # Plotting within the UI
+                ax = fig.add_subplot(111)
+                scatter_on_map(
+                    crashes[0],  
+                    crash_times[0],  
+                    0.3,
+                    "r",
+                    20,
+                    "x",
+                    "Predicted Crash Sites",
+                    title="Crash site heatmap",
+                    ax=ax,
+                    show=False,  # Do not show here
+                    draw_lines=True
+                )
+
+                scatter_on_map(
+                    [self.sim_states[-1][:3]],
+                    [self.sim_times[-1]],
+                    1,
+                    "b",
+                    60,
+                    "x",
+                    "True Crash Site",
+                    ax=ax,
+                    show=False,  # Do not show here
+                    draw_lines=False
+                )
+
+                scatter_on_map(
+                    [mean_crash],
+                    [mean_crash_time],
+                    1,
+                    "g",
+                    60,
+                    "x",
+                    "Mean Crash Site",
+                    ax=ax,
+                    show=False,  # Do not show here
+                    draw_lines=False
+                )
+
+                ax.legend()
+                canvas.draw()  # Explicitly draw the canvas to update the plot
+
+                # Display the total standard deviation and final error
+                total_std = np.mean(np.std(crashes[0], axis=0))
+                final_error = np.linalg.norm(mean_crash - self.sim_states[-1, :3])
+                self.output_text.append(f"Total standard deviation: {total_std}")
+                self.output_text.append(f"Final error: {final_error}")
+
             except Exception as e:
                 self.display_error(str(e))
         else:

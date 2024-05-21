@@ -2,7 +2,6 @@ import numpy as np
 from PyQt6.QtCore import QThread, pyqtSignal
 import deorbit
 from deorbit.predictor import EKF
-# from deorbit.utils.dataio import load_sim_data, load_sim_config
 from deorbit.observer import Observer
 
 class WorkerThread(QThread):
@@ -10,15 +9,18 @@ class WorkerThread(QThread):
     plot_first_two_signal = pyqtSignal(np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray)
     plot_last_two_signal = pyqtSignal(np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray)
     plot_error_signal = pyqtSignal(np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray)   
+    plot_heatmap_signal = pyqtSignal(np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray)
     error_signal = pyqtSignal(str)
 
-    def __init__(self, method, atmos_model, dim, number_of_radars=10, radar_position_std_per_distance=0.005):
+    def __init__(self, method, atmos_model, dim, number_of_radars=10, radar_position_std_per_distance=0.005, radar_velocity_std_per_speed=0.0005, radar_velocity_std_per_distance=0):
         super().__init__()
         self.method = method
         self.atmos_model = atmos_model
         self.dim = dim
         self.number_of_radars = number_of_radars
         self.radar_position_std_per_distance = radar_position_std_per_distance
+        self.radar_velocity_std_per_speed = radar_velocity_std_per_speed
+        self.radar_velocity_std_per_distance = radar_velocity_std_per_distance
 
     def run(self):
         try:
@@ -53,13 +55,19 @@ class WorkerThread(QThread):
                 self.update_signal.emit('3D simulation data initialized... ')
 
             self.update_signal.emit('Running observer... ')
-            obs = Observer(number_of_radars=self.number_of_radars, dim=self.dim, radar_position_std_per_distance=self.radar_position_std_per_distance)
+            obs = Observer(number_of_radars=self.number_of_radars, 
+                           dim=self.dim, 
+                           radar_position_std_per_distance=self.radar_position_std_per_distance,
+                           radar_velocity_std_per_speed = self.radar_velocity_std_per_speed,
+                           radar_velocity_std_per_distance = self.radar_velocity_std_per_distance
+                           )
             obs.run(sim_states=sim_data.state_array(), sim_times=sim_data.times, checking_interval=100)
             self.update_signal.emit('Observer complete! ')
 
             observation_times = np.array(obs.observed_times)
             observation_states = np.array(obs.observed_states)
             observed_covariances = np.array(obs.observed_covariances)
+            observation_to_check = [-2]
 
             self.update_signal.emit('Running EKF...')
             ekf = EKF(dim=self.dim)
@@ -102,6 +110,16 @@ class WorkerThread(QThread):
                 observation_states,
                 observation_times,
                 observed_covariances
+            )
+
+            self.plot_heatmap_signal.emit(
+                np.array(sim_data.state_array()),
+                np.array(sim_data.times),
+                estimated_traj, 
+                np.array(estimated_times), 
+                np.array(observation_to_check),
+                np.array(observation_times),
+                uncertainties
             )
 
             self.update_signal.emit('Simulation and estimation complete!')

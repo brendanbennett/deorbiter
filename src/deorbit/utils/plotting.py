@@ -620,6 +620,76 @@ def plot_heatmap(
     return all_crashes, all_crash_times
 
 
+def plot_heatmap_gui(
+    sim_states,
+    sim_times,
+    estimated_traj,
+    estimated_times,
+    observation_idxs_to_check,
+    observation_times,
+    uncertainties,
+    n_traj=100,
+    time_step=10,
+    plot_mean=False,
+) -> tuple[list[np.ndarray], list[np.ndarray]]:
+    """Generates a heatmap of the impact location probability based on trajectory uncertainties at selected observations.
+    
+    Args:
+        sim_states (np.ndarray): The true trajectory data points.
+        sim_times (np.ndarray): Timestamps for each data point.
+        estimated_traj (np.ndarray): The estimated trajectory data points.
+        estimated_times (np.ndarray): Timestamps for each estimated data point.
+        observation_idxs_to_check (list): The indices of the observations to start simulations at.
+        observation_times (np.ndarray): Timestamps for each observation.
+        uncertainties (np.ndarray): Uncertainty matrices associated with each trajectory point.
+        n_traj (int): The number of trajectories to sample at each time. Defaults to 100.
+        time_step (int): The time step duration. Defaults to 10.
+        plot_mean (bool): Whether to plot the mean crash site or not. Defaults to False.
+        
+    Returns:
+        tuple[list[np.ndarray], list[np.ndarray]]: The crash sites and crash times for each observation.
+    """
+    rollout_sim_config = generate_sim_config(
+        "RK4",
+        "coesa_atmos_fast",
+        initial_state=np.array((EARTH_RADIUS + 150000, 0, 0, 0, 0, 7820)),
+        time_step=time_step,
+    )
+    rollout_sim = Simulator(rollout_sim_config)
+    all_crashes = []
+    all_crash_times = []
+    for i in observation_idxs_to_check:
+        crash_sites = []
+        crash_times = []
+        t = observation_times[i]
+        est_idx = np.argmax(estimated_times >= t)
+        uncertainty_to_plot = uncertainties[est_idx]
+        samples = np.random.multivariate_normal(
+            estimated_traj[est_idx], uncertainty_to_plot, n_traj
+        )
+        for s in samples:
+            rollout_sim.set_initial_conditions(s, t)
+            with contextlib.redirect_stdout(None):
+                rollout_sim.run()
+            crash_sites.append(rollout_sim.states[-1][:3])
+            crash_times.append(rollout_sim.times[-1])
+            
+        # Calculate mean crash site
+        rollout_sim.set_initial_conditions(estimated_traj[est_idx], t)
+        with contextlib.redirect_stdout(None):
+            rollout_sim.run()
+        mean_crash_site = rollout_sim.states[-1][:3]
+        mean_crash_time = rollout_sim.times[-1]
+        
+        crash_sites = np.array(crash_sites)
+        crash_times = np.array(crash_times)
+        all_crashes.append(crash_sites)
+        all_crash_times.append(crash_times)
+    if plot_mean:
+        return all_crashes, all_crash_times, mean_crash_site, mean_crash_time
+    return all_crashes, all_crash_times
+
+
 def plot_error(
     true_traj, estimated_traj, title="Error in Trajectories", ax=None, show=True
 ) -> None:
