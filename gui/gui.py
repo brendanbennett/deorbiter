@@ -56,7 +56,7 @@ class SatelliteSimulatorGUI(QMainWindow):
         layout.addWidget(self.atmos_model_combo)
 
         self.method_combo = QComboBox()
-        self.method_combo.addItems(['RK4', 'Euler', 'Adams-Bashforth'])
+        self.method_combo.addItems(['RK4', 'euler', 'adams_bashforth'])
         self.method_combo.setToolTip("Select the numerical integration method.")
         layout.addWidget(QLabel("Method:"))
         layout.addWidget(self.method_combo)
