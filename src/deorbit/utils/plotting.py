@@ -125,7 +125,6 @@ def plot_trajectories(
         ax.set_xlabel("Position X")
         ax.set_ylabel("Position Y")
         ax.set_zlabel("Position Z")
-        # ax.set_aspect('equal')
 
         # plotting EARTH
         r = deorbit.constants.EARTH_RADIUS
@@ -621,6 +620,76 @@ def plot_heatmap(
     return all_crashes, all_crash_times
 
 
+def plot_heatmap_gui(
+    sim_states,
+    sim_times,
+    estimated_traj,
+    estimated_times,
+    observation_idxs_to_check,
+    observation_times,
+    uncertainties,
+    n_traj=100,
+    time_step=10,
+    plot_mean=False,
+) -> tuple[list[np.ndarray], list[np.ndarray]]:
+    """Generates a heatmap of the impact location probability based on trajectory uncertainties at selected observations.
+    
+    Args:
+        sim_states (np.ndarray): The true trajectory data points.
+        sim_times (np.ndarray): Timestamps for each data point.
+        estimated_traj (np.ndarray): The estimated trajectory data points.
+        estimated_times (np.ndarray): Timestamps for each estimated data point.
+        observation_idxs_to_check (list): The indices of the observations to start simulations at.
+        observation_times (np.ndarray): Timestamps for each observation.
+        uncertainties (np.ndarray): Uncertainty matrices associated with each trajectory point.
+        n_traj (int): The number of trajectories to sample at each time. Defaults to 100.
+        time_step (int): The time step duration. Defaults to 10.
+        plot_mean (bool): Whether to plot the mean crash site or not. Defaults to False.
+        
+    Returns:
+        tuple[list[np.ndarray], list[np.ndarray]]: The crash sites and crash times for each observation.
+    """
+    rollout_sim_config = generate_sim_config(
+        "RK4",
+        "coesa_atmos_fast",
+        initial_state=np.array((EARTH_RADIUS + 150000, 0, 0, 0, 0, 7820)),
+        time_step=time_step,
+    )
+    rollout_sim = Simulator(rollout_sim_config)
+    all_crashes = []
+    all_crash_times = []
+    for i in observation_idxs_to_check:
+        crash_sites = []
+        crash_times = []
+        t = observation_times[i]
+        est_idx = np.argmax(estimated_times >= t)
+        uncertainty_to_plot = uncertainties[est_idx]
+        samples = np.random.multivariate_normal(
+            estimated_traj[est_idx], uncertainty_to_plot, n_traj
+        )
+        for s in samples:
+            rollout_sim.set_initial_conditions(s, t)
+            with contextlib.redirect_stdout(None):
+                rollout_sim.run()
+            crash_sites.append(rollout_sim.states[-1][:3])
+            crash_times.append(rollout_sim.times[-1])
+            
+        # Calculate mean crash site
+        rollout_sim.set_initial_conditions(estimated_traj[est_idx], t)
+        with contextlib.redirect_stdout(None):
+            rollout_sim.run()
+        mean_crash_site = rollout_sim.states[-1][:3]
+        mean_crash_time = rollout_sim.times[-1]
+        
+        crash_sites = np.array(crash_sites)
+        crash_times = np.array(crash_times)
+        all_crashes.append(crash_sites)
+        all_crash_times.append(crash_times)
+    if plot_mean:
+        return all_crashes, all_crash_times, mean_crash_site, mean_crash_time
+    return all_crashes, all_crash_times
+
+
 def plot_error(
     true_traj, estimated_traj, title="Error in Trajectories", ax=None, show=True
 ) -> None:
@@ -822,6 +891,9 @@ def plot_theoretical_empirical_observation_error(
     observation_states,
     observation_times,
     observed_covariances,
+    ax1=None,
+    ax2=None,
+    show=True
 ) -> None:
     """
     Plots both theoretical and empirical observation errors for position and velocity.
@@ -832,8 +904,13 @@ def plot_theoretical_empirical_observation_error(
         observation_states (np.ndarray): Observed states.
         observation_times (np.ndarray): Timestamps for observed states.
         observed_covariances (np.ndarray): Covariance matrices for the observations.
+        ax1 (matplotlib.axes.Axes): Axes for the velocity error plot.
+        ax2 (matplotlib.axes.Axes): Axes for the position error plot.
     """
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 8))
+    # Ensure axes are provided or create them if needed
+    if ax1 is None or ax2 is None:
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 8))
+
     sim_times_observed = np.array(
         [i for i, t in enumerate(sim_times) if t in observation_times]
     )
@@ -851,7 +928,10 @@ def plot_theoretical_empirical_observation_error(
         s=20,
     )
     ax1.scatter(
-        observation_times, vel_std, label="Theoretical", marker="+", s=30
+        observation_times, 
+        vel_std, 
+        label="Theoretical", 
+        marker="+", s=30
     )
     ax1.set_xlabel("Time [s]")
     ax1.set_ylabel("Velocity error [m/s]")
@@ -872,15 +952,18 @@ def plot_theoretical_empirical_observation_error(
         s=20,
     )
     ax2.scatter(
-        observation_times, pos_std, label="Theoretical", marker="+", s=30
+        observation_times, 
+        pos_std, 
+        label="Theoretical", 
+        marker="+", s=30
     )
     ax2.set_xlabel("Time [s]")
     ax2.set_ylabel("Position error [m]")
     ax2.set_title("Position measurement error")
     ax2.legend()
 
-    fig.set_constrained_layout(True)
-    plt.show()
+    if show:
+        plt.show()
 
 
 def _plot_heatmap_old(true_traj, estimated_traj, uncertainties):
