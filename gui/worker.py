@@ -12,7 +12,7 @@ class WorkerThread(QThread):
     plot_heatmap_signal = pyqtSignal(np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray)
     error_signal = pyqtSignal(str)
 
-    def __init__(self, method, atmos_model, dim, number_of_radars=10, radar_position_std_per_distance=0.005, radar_velocity_std_per_speed=0.0005, radar_velocity_std_per_distance=0):
+    def __init__(self, method, atmos_model, dim, number_of_radars=10, radar_position_std_per_distance=0.005, radar_velocity_std_per_speed=0.0005, radar_velocity_std_per_distance=0, random_seed=None):
         super().__init__()
         self.method = method
         self.atmos_model = atmos_model
@@ -21,10 +21,13 @@ class WorkerThread(QThread):
         self.radar_position_std_per_distance = radar_position_std_per_distance
         self.radar_velocity_std_per_speed = radar_velocity_std_per_speed
         self.radar_velocity_std_per_distance = radar_velocity_std_per_distance
+        self.random_seed = random_seed
 
     def run(self):
         try:
-            np.random.seed(0)
+            if self.random_seed is not None:
+                np.random.seed(self.random_seed)
+                
             if self.dim == 2:
                 self.update_signal.emit("Running 2D simulation...")
                 sim = deorbit.simulator.run(

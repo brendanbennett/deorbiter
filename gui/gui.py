@@ -70,21 +70,26 @@ class SatelliteSimulatorGUI(QMainWindow):
         self.radar_position_std_per_position = QLineEdit()
         self.radar_position_std_per_position.setText("5e-3")
         self.radar_position_std_per_position.setToolTip("Enter the radar position std per distance.")
-        layout.addWidget(QLabel("Radar position std per distance(sigma_r):"))
+        layout.addWidget(QLabel("Radar position std per distance (&sigma;<sub>r</sub>):"))
         layout.addWidget(self.radar_position_std_per_position)
 
         self.radar_velocity_std__per_speed = QLineEdit()
         self.radar_velocity_std__per_speed.setText("5e-4")
         self.radar_velocity_std__per_speed.setToolTip("Enter the radar velocity std per meter.")
-        layout.addWidget(QLabel("Radar velocity std per meter (sigma_vs):"))
+        layout.addWidget(QLabel("Radar velocity std per meter (&sigma;<sub>vs</sub>):"))
         layout.addWidget(self.radar_velocity_std__per_speed)
 
         self.radar_velocity_std_per_distance = QLineEdit()
         self.radar_velocity_std_per_distance.setText("1e-6")
         self.radar_velocity_std_per_distance.setToolTip("Enter the radar velocity std per meter.")
-        layout.addWidget(QLabel("Radar velocity std per meter (simage_vd):"))
+        layout.addWidget(QLabel("Radar velocity std per meter (&sigma;<sub>vd</sub>):"))
         layout.addWidget(self.radar_velocity_std_per_distance)
 
+        self.random_seed_number = QLineEdit()
+        self.random_seed_number.setText("None")
+        self.random_seed_number.setToolTip("Enter the random seed for simulation.")
+        layout.addWidget(QLabel("Random seed for Simulation:"))
+        layout.addWidget(self.random_seed_number)
 
     def setup_controls(self, layout):
         row1_layout = QHBoxLayout()
@@ -147,6 +152,11 @@ class SatelliteSimulatorGUI(QMainWindow):
             radar_position_std_per_distance = float(self.radar_position_std_per_position.text())
             radar_velocity_std_per_speed = float(self.radar_velocity_std__per_speed.text())
             radar_velocity_std_per_distance = float(self.radar_velocity_std_per_distance.text())
+            random_seed = None
+
+            random_seed_text = self.random_seed_number.text().strip()
+            if random_seed_text and random_seed_text.lower() != 'none':
+                random_seed = int(random_seed_text)
 
             if number_of_radars <= 0:
                 raise ValueError("Number of radars must be greater than 0.")
@@ -170,7 +180,8 @@ class SatelliteSimulatorGUI(QMainWindow):
                                     number_of_radars, 
                                     radar_position_std_per_distance,
                                     radar_velocity_std_per_speed,
-                                    radar_velocity_std_per_distance
+                                    radar_velocity_std_per_distance,
+                                    random_seed
                                     )
         
         self.thread.update_signal.connect(self.update_output)
